@@ -104,7 +104,7 @@
         #sidebar-toggle.collapsed { left: 10px; }
         #sidebar-toggle svg { transition: transform 0.3s ease; }
         #sidebar-toggle.collapsed svg { transform: rotate(180deg); }
-        .folder-content.collapsed { display: none; }
+        .content-container.collapsed { display: none; }
         .info-card { background-color: var(--primary-bg); border-left: 5px solid var(--accent-color); padding: 15px; margin-bottom: 15px; border-radius: 4px; }
         .schedules-container { display: grid; grid-template-columns: 1fr; gap: 25px; }
         @media (min-width: 992px) { .schedules-container { grid-template-columns: 1fr 1fr; } }
@@ -639,7 +639,7 @@
         } else if (type === 'subject') {
             const folder = findItemPath(parentFolderId, 'folder').folder;
             if (id) Object.assign(folder.subjects.find(s => s.id == id), itemData);
-            else folder.subjects.push({ id: getNextId('subject'), ...itemData, topics: [] });
+            else folder.subjects.push({ id: getNextId('subject'), ...itemData, topics: [], isCollapsed: false });
         } else if (type === 'topic') {
             const { subject } = findItemPath(parentSubjectId, 'subject');
             if (id) Object.assign(subject.topics.find(t => t.id == id), itemData);
@@ -652,18 +652,29 @@
         foldersListDiv.innerHTML = '';
         data.folders.forEach(folder => {
             const folderContainer = document.createElement('div');
-            folderContainer.className = 'folder-container';
+            folderContainer.className = 'item-container';
             folderContainer.dataset.id = folder.id;
             folderContainer.appendChild(createItemElement('folder', folder));
             
             const folderContent = document.createElement('div');
-            folderContent.className = 'folder-content';
+            folderContent.className = 'content-container';
             if (folder.isCollapsed) folderContent.classList.add('collapsed');
+            
             folder.subjects.forEach(subject => {
-                folderContent.appendChild(createItemElement('subject', subject, { folderId: folder.id }));
+                const subjectContainer = document.createElement('div');
+                subjectContainer.className = 'item-container';
+                subjectContainer.appendChild(createItemElement('subject', subject, { folderId: folder.id }));
+                
+                const subjectContent = document.createElement('div');
+                subjectContent.className = 'content-container';
+                if(subject.isCollapsed) subjectContent.classList.add('collapsed');
+
                 subject.topics.forEach(topic => {
-                    folderContent.appendChild(createItemElement('topic', topic, { folderId: folder.id, subjectId: subject.id }));
+                    subjectContent.appendChild(createItemElement('topic', topic, { folderId: folder.id, subjectId: subject.id }));
                 });
+                
+                subjectContainer.appendChild(subjectContent);
+                folderContent.appendChild(subjectContainer);
             });
             folderContainer.appendChild(folderContent);
             foldersListDiv.appendChild(folderContainer);
@@ -679,11 +690,11 @@
         Object.keys(parentIds).forEach(key => { el.dataset[key] = parentIds[key]; });
         
         let addBtn = '', toggleBtn = '';
-        if (type === 'folder') {
+        if (type === 'folder' || type === 'subject') {
             const isCollapsed = item.isCollapsed ? 'collapsed' : '';
-            toggleBtn = `<span class="folder-toggle ${isCollapsed}" style="font-size: 1.2em; user-select: none; transition: transform 0.2s; cursor:pointer;">▾</span>`;
-            addBtn = `<button class="add-subject-btn">+ Matéria</button>`;
+            toggleBtn = `<span class="toggle-btn ${isCollapsed}" style="font-size: 1.2em; user-select: none; transition: transform 0.2s; cursor:pointer;">▾</span>`;
         }
+        if (type === 'folder') addBtn = `<button class="add-subject-btn">+ Matéria</button>`;
         if (type === 'subject') addBtn = `<button class="add-topic-btn">+ Assunto</button>`;
         
         el.innerHTML = `<div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">${toggleBtn}<div style="width: 18px; height: 18px; border-radius: 4px; margin: 0 12px; border: 1px solid #ccc; flex-shrink: 0; background-color:${item.color};"></div><div style="min-width:0;"><strong>${item.name}</strong>${item.description?`<p style="font-size: 0.9em; color: #718096; margin-top: 5px; white-space: pre-wrap; word-break: break-word;">${item.description}</p>`:''}</div></div><div class="action-buttons" style="flex-shrink:0; margin-left: 10px;">${addBtn}<button class="edit-btn">Editar</button><button class="duplicate-btn">Duplicar</button><button class="delete-btn danger">Excluir</button></div>`;
@@ -692,16 +703,20 @@
     
     foldersListDiv.addEventListener('click', (e) => {
         const button = e.target.closest('button');
-        const toggle = e.target.closest('.folder-toggle');
+        const toggle = e.target.closest('.toggle-btn');
         const itemEl = e.target.closest('[data-id]');
         if (!itemEl) return;
 
         if (toggle) {
-            const folderId = itemEl.dataset.id;
-            const folder = findItemPath(folderId, 'folder').folder;
-            folder.isCollapsed = !folder.isCollapsed;
-            saveData();
-            renderFolders();
+            const itemId = itemEl.dataset.id;
+            const itemType = itemEl.dataset.type;
+            const itemPath = findItemPath(itemId, itemType);
+            const item = itemPath[itemType];
+            if(item) {
+                item.isCollapsed = !item.isCollapsed;
+                saveData();
+                renderFolders();
+            }
             return;
         }
 
@@ -1569,4 +1584,3 @@
     </script>
 </body>
 </html>
-
