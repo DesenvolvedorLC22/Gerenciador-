@@ -25,7 +25,6 @@
             --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        /* --- NOVO: TEMA ESCURO --- */
         body.dark-theme {
             --primary-bg: #1a202c;
             --secondary-bg: #2d3748;
@@ -52,12 +51,12 @@
             background-color: #2d3748;
         }
         .settings-icon { 
-            padding: 15px 20px; 
-            cursor: pointer; 
-            text-align: center; 
-            border-top: 1px solid #718096; 
-            white-space: nowrap;
-            transition: background-color 0.2s;
+             padding: 15px 20px; 
+             cursor: pointer; 
+             text-align: center; 
+             border-top: 1px solid #718096; 
+             white-space: nowrap;
+             transition: background-color 0.2s;
         }
         .settings-icon:hover {
             background-color: #2d3748;
@@ -228,13 +227,76 @@
             font-size: 1em;
             box-sizing: border-box;
             padding: 5px 0 0 0;
-            color: #333; /* Texto do flashcard continua escuro por causa do fundo claro */
+            color: #333;
         }
         .flashcard-textarea:focus { outline: none; }
         .flashcard-color-picker { cursor: pointer; border: none; background: none; padding: 0; width: 24px; height: 24px; }
         .flashcard-actions button { background: none; border: none; color: #555; cursor: pointer; font-size: 1.1em; padding: 2px 5px; }
         .flashcard-actions button:hover { color: var(--danger-color); }
         .flashcard-actions .duplicate-card:hover { color: var(--accent-color); }
+
+        /* --- ESTILOS PARA O VISUALIZADOR DE ANEXOS (CORRIGIDO) --- */
+        #attachment-viewer-modal .viewer-content {
+            background-color: var(--secondary-bg);
+            width: 95%;
+            max-width: 1200px;
+            height: 90vh;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+        }
+        .viewer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .viewer-header h3 {
+            margin: 0;
+            border: none;
+            padding: 0;
+        }
+        #viewer-close-btn {
+            font-size: 1.5em;
+            padding: 0 10px;
+            line-height: 1;
+        }
+        .viewer-body {
+            flex-grow: 1;
+            overflow: hidden; /* Evita barras de rolagem duplas */
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            /* Alterado para 'stretch' para permitir que o conteúdo preencha o espaço */
+            align-items: stretch; 
+        }
+        /* Regra para imagens e vídeos, que mantêm a proporção e se centralizam */
+        .viewer-body img, .viewer-body video {
+            max-width: 100%;
+            max-height: 100%;
+            border: none;
+            align-self: center; /* Impede que a imagem/vídeo seja esticado */
+        }
+        /* Regra para PDFs e texto, que devem preencher o espaço */
+        .viewer-body iframe, .viewer-body pre {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .viewer-body pre {
+            white-space: pre-wrap;
+            word-break: break-all;
+            padding: 15px;
+            background-color: var(--primary-bg);
+            border-radius: 5px;
+            text-align: left;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+        }
     </style>
 </head>
 <body>
@@ -452,1135 +514,1215 @@
             </form>
         </div>
     </div>
+
+    <div id="attachment-viewer-modal" class="modal" style="padding:0;">
+        <div class="viewer-content">
+            <div class="viewer-header">
+                <h3 id="viewer-title">Visualizador de Anexo</h3>
+                <button id="viewer-close-btn" class="danger">&times;</button>
+            </div>
+            <div id="viewer-body" class="viewer-body">
+            </div>
+        </div>
+    </div>
     
     <script>
-    // --- SCRIPT COMPLETO ---
     document.addEventListener('DOMContentLoaded', () => {
     
-    // --- NOVO: APLICA TEMA SALVO AO CARREGAR ---
-    if (localStorage.getItem('theme') === 'dark') {
-        document.body.classList.add('dark-theme');
-    }
-
-    // --- ESTADO GLOBAL E VARIÁVEIS ---
-    let data = {
-        folders: [], flashcardAreas: [],
-        schedules: { activities: [], reviews: [] },
-        cycles: [], studyHistory: [],
-        nextIds: { folder: 1, subject: 1, topic: 1, attachment: 1, flashcardArea: 1, flashcard: 1, schedule: 1, cycle: 1, cycleItem: 1, history: 1 }
-    };
-    
-    let rootDirectoryHandle = null, db, alarmInterval = null, audioContext, activeAlarmSound = null;
-    let timerInterval = null, timerState = 'stopped', timeLeft = 0, initialDuration = 0, currentTimerType = 'study';
-    let isCycleRunning = false, currentCycleId, currentCycleRep, currentCycleStepIndex;
-    let currentChart = null;
-    
-    // --- FUNÇÕES DE DADOS E INICIALIZAÇÃO ---
-    function getNextId(type) { if (!data.nextIds[type]) data.nextIds[type] = 1; const id = data.nextIds[type]; data.nextIds[type]++; return id; }
-    
-    function saveData() { try { localStorage.setItem('studyOrganizerData_v4', JSON.stringify(data)); } catch (e) { console.error("Erro ao salvar dados:", e); } }
-    
-    function loadData() {
-        const savedData = localStorage.getItem('studyOrganizerData_v4');
-        if (savedData) {
-            const parsedData = JSON.parse(savedData);
-            const defaultStructure = { folders: [], flashcardAreas: [], schedules: { activities: [], reviews: [] }, cycles: [], studyHistory: [], nextIds: { ...data.nextIds } };
-            data = { ...defaultStructure, ...parsedData };
-            data.nextIds = { ...defaultStructure.nextIds, ...(parsedData.nextIds || {}) };
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-theme');
         }
-    }
 
-    async function initializeApp() {
-        try {
-            await initDB();
-            rootDirectoryHandle = await loadDirectoryHandle();
-            loadData();
-            updateDirectoryStatus();
-            renderAll();
-            startAlarmSystem();
-            setupSidebarToggle();
-            setupThemeToggle(); // Adicionado
-        } catch (error) { console.error("Falha na inicialização:", error); alert("Ocorreu um erro. Verifique o console (F12).") }
-    }
-    
-    function renderAll() { 
-        renderFolders(); 
-        renderFlashcardAreas(); 
-        updateAttachmentSelectors(); 
-        renderSchedules();
-        renderCycles();
-        populateTimerSelectors(document.getElementById('timer-subject-select'), document.getElementById('timer-topic-select'));
-    }
-
-    function initDB() { return new Promise((resolve, reject) => { const request = indexedDB.open('StudyAppDB_v4', 1); request.onerror = () => reject("Erro ao abrir IndexedDB."); request.onsuccess = (event) => { db = event.target.result; resolve(); }; request.onupgradeneeded = (event) => { const db = event.target.result; if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' }); }; }); }
-    function saveDirectoryHandle(handle) { if (!db) return Promise.reject("DB não inicializado."); const transaction = db.transaction(['settings'], 'readwrite'); return transaction.objectStore('settings').put({ id: 'rootDirectory', handle }); }
-    function loadDirectoryHandle() { if (!db) return Promise.resolve(null); const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('rootDirectory'); return new Promise((resolve) => { request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
-
-    function initAudioContext() { if (!audioContext && (window.AudioContext || window.webkitAudioContext)) try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { console.error("Web Audio API não é suportada.", e); } }
-    function playDefaultBeep() { if (!audioContext) return null; if (audioContext.state === 'suspended') audioContext.resume(); const gainNode = audioContext.createGain(); gainNode.connect(audioContext.destination); const oscillator = audioContext.createOscillator(); oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(880, audioContext.currentTime); oscillator.connect(gainNode); oscillator.start(); const interval = setInterval(() => { gainNode.gain.cancelScheduledValues(audioContext.currentTime); gainNode.gain.setValueAtTime(gainNode.gain.value, audioContext.currentTime); gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.1); gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5); }, 600); return { oscillator, gainNode, interval }; }
-    function stopDefaultBeep(beep) { if (!beep) return; clearInterval(beep.interval); beep.oscillator.stop(); beep.oscillator.disconnect(); beep.gainNode.disconnect(); }
-
-    function findItemPath(itemId, itemType) {
-        if (!itemId || !itemType) return {};
-        for (const folder of data.folders) {
-            if (itemType === 'folder' && folder.id == itemId) return { folder };
-            for (const subject of folder.subjects) {
-                if (itemType === 'subject' && subject.id == itemId) return { folder, subject };
-                if (itemType === 'topic') {
-                    for (const topic of subject.topics) {
-                        if (topic.id == itemId) return { folder, subject, topic };
-                    }
-                }
-            }
-        }
-        return {};
-    }
-
-    // --- LÓGICA DE NAVEGAÇÃO E UI GERAL ---
-    function setupSidebarToggle() {
-        const sidebar = document.getElementById('sidebar');
-        const toggleBtn = document.getElementById('sidebar-toggle');
-        const applyState = (isCollapsed) => {
-            sidebar.classList.toggle('collapsed', isCollapsed);
-            toggleBtn.classList.toggle('collapsed', isCollapsed);
+        // --- ESTADO GLOBAL E VARIÁVEIS ---
+        let data = {
+            folders: [], flashcardAreas: [],
+            schedules: { activities: [], reviews: [] },
+            cycles: [], studyHistory: [],
+            nextIds: { folder: 1, subject: 1, topic: 1, attachment: 1, flashcardArea: 1, flashcard: 1, schedule: 1, cycle: 1, cycleItem: 1, history: 1 }
         };
-        toggleBtn.addEventListener('click', () => {
-            const isCollapsed = sidebar.classList.toggle('collapsed');
-            toggleBtn.classList.toggle('collapsed', isCollapsed);
-            localStorage.setItem('sidebarCollapsed_v4', isCollapsed);
-        });
-        applyState(localStorage.getItem('sidebarCollapsed_v4') === 'true');
-    }
-
-    // --- NOVO: LÓGICA DO TEMA ESCURO ---
-    function setupThemeToggle() {
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        themeToggleBtn.addEventListener('click', () => {
-            document.body.classList.toggle('dark-theme');
-            if (document.body.classList.contains('dark-theme')) {
-                localStorage.setItem('theme', 'dark');
-            } else {
-                localStorage.setItem('theme', 'light');
-            }
-        });
-    }
-    
-    const modals = document.querySelectorAll('.modal');
-    const tabLinks = document.querySelectorAll('.tab-link');
-    const tabContents = document.querySelectorAll('.tab-content');
-    tabLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const tabId = e.target.getAttribute('data-tab');
-            tabLinks.forEach(l => l.classList.remove('active'));
-            e.target.classList.add('active');
-            tabContents.forEach(content => {
-                const isActive = content.id === `${tabId}-tab`;
-                content.style.display = isActive ? 'block' : 'none';
-                if(isActive) content.classList.add('active');
-                else content.classList.remove('active');
-            });
-            if (tabId === 'attachments') updateAttachmentSelectors();
-            if (tabId === 'cronometro') populateTimerSelectors(document.getElementById('timer-subject-select'), document.getElementById('timer-topic-select'));
-            if (tabId === 'graficos') renderChart();
-        });
-    });
-    function openModal(modalId) { 
-        document.getElementById(modalId).style.display = 'flex';
-    }
-    function closeModal() { modals.forEach(modal => modal.style.display = 'none'); }
-    document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', closeModal));
-    window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) closeModal(); });
-    
-    // --- LÓGICA DE PASTAS / MATÉRIAS / ASSUNTOS ---
-    const itemForm = document.getElementById('item-form');
-    const foldersListDiv = document.getElementById('folders-list');
-    document.getElementById('change-color-button').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('color-picker-input').click(); });
-    document.getElementById('color-picker-input').addEventListener('input', (e) => { document.getElementById('modal-color-preview').style.backgroundColor = e.target.value; });
-
-    function openItemModal(type, editId = null, parentIds = {}) {
-        itemForm.reset();
-        document.getElementById('item-type').value = type;
-        document.getElementById('item-id').value = editId || '';
-        document.getElementById('parent-folder-id').value = parentIds.folderId || '';
-        document.getElementById('parent-subject-id').value = parentIds.subjectId || '';
-        let title = `${editId ? 'Editar' : 'Adicionar'}`;
-        let item = { color: '#888888' };
-        if (editId) {
-            const path = findItemPath(editId, type);
-            item = path[type];
-        }
-        switch(type) {
-            case 'folder': title += ' Pasta'; break;
-            case 'subject': title += ' Matéria'; break;
-            case 'topic': title += ' Assunto'; break;
-        }
-        document.getElementById('item-modal-title').innerText = title;
-        document.getElementById('item-name').value = item.name || '';
-        document.getElementById('item-description').value = item.description || '';
-        document.getElementById('color-picker-input').value = item.color || '#4299e1';
-        document.getElementById('modal-color-preview').style.backgroundColor = item.color || '#4299e1';
-        openModal('item-modal');
-    }
-
-    document.getElementById('add-folder-btn').addEventListener('click', () => openItemModal('folder'));
-
-    itemForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const id = document.getElementById('item-id').value;
-        const type = document.getElementById('item-type').value;
-        const parentFolderId = document.getElementById('parent-folder-id').value;
-        const parentSubjectId = document.getElementById('parent-subject-id').value;
-        const itemData = { name: document.getElementById('item-name').value, description: document.getElementById('item-description').value, color: document.getElementById('color-picker-input').value };
-
-        if (type === 'folder') {
-            if (id) Object.assign(findItemPath(id, 'folder').folder, itemData);
-            else data.folders.push({ id: getNextId('folder'), ...itemData, subjects: [], isCollapsed: false });
-        } else if (type === 'subject') {
-            const folder = findItemPath(parentFolderId, 'folder').folder;
-            if (id) Object.assign(folder.subjects.find(s => s.id == id), itemData);
-            else folder.subjects.push({ id: getNextId('subject'), ...itemData, topics: [], isCollapsed: false });
-        } else if (type === 'topic') {
-            const { subject } = findItemPath(parentSubjectId, 'subject');
-            if (id) Object.assign(subject.topics.find(t => t.id == id), itemData);
-            else subject.topics.push({ id: getNextId('topic'), ...itemData, attachments: [] });
-        }
-        renderAll(); saveData(); closeModal();
-    });
-
-    function renderFolders() {
-        foldersListDiv.innerHTML = '';
-        data.folders.forEach(folder => {
-            const folderContainer = document.createElement('div');
-            folderContainer.className = 'item-container';
-            folderContainer.dataset.id = folder.id;
-            folderContainer.appendChild(createItemElement('folder', folder));
-            
-            const folderContent = document.createElement('div');
-            folderContent.className = 'content-container';
-            if (folder.isCollapsed) folderContent.classList.add('collapsed');
-            
-            folder.subjects.forEach(subject => {
-                const subjectContainer = document.createElement('div');
-                subjectContainer.className = 'item-container';
-                subjectContainer.appendChild(createItemElement('subject', subject, { folderId: folder.id }));
-                
-                const subjectContent = document.createElement('div');
-                subjectContent.className = 'content-container';
-                if(subject.isCollapsed) subjectContent.classList.add('collapsed');
-
-                subject.topics.forEach(topic => {
-                    subjectContent.appendChild(createItemElement('topic', topic, { folderId: folder.id, subjectId: subject.id }));
-                });
-                
-                subjectContainer.appendChild(subjectContent);
-                folderContent.appendChild(subjectContainer);
-            });
-            folderContainer.appendChild(folderContent);
-            foldersListDiv.appendChild(folderContainer);
-        });
-    }
-
-    function createItemElement(type, item, parentIds = {}) {
-        const el = document.createElement('div');
-        el.className = `${type}-item`;
-        el.style.borderLeftColor = item.color;
-        el.dataset.id = item.id;
-        el.dataset.type = type;
-        Object.keys(parentIds).forEach(key => { el.dataset[key] = parentIds[key]; });
         
-        let addBtn = '', toggleBtn = '';
-        if (type === 'folder' || type === 'subject') {
-            const isCollapsed = item.isCollapsed ? 'collapsed' : '';
-            toggleBtn = `<span class="toggle-btn ${isCollapsed}" style="font-size: 1.2em; user-select: none; transition: transform 0.2s; cursor:pointer;">▾</span>`;
-        }
-        if (type === 'folder') addBtn = `<button class="add-subject-btn">+ Matéria</button>`;
-        if (type === 'subject') addBtn = `<button class="add-topic-btn">+ Assunto</button>`;
+        let rootDirectoryHandle = null, db, alarmInterval = null, audioContext, activeAlarmSound = null;
+        let timerInterval = null, timerState = 'stopped', timeLeft = 0, initialDuration = 0, currentTimerType = 'study';
+        let isCycleRunning = false, currentCycleId, currentCycleRep, currentCycleStepIndex;
+        let currentChart = null;
         
-        el.innerHTML = `<div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">${toggleBtn}<div style="width: 18px; height: 18px; border-radius: 4px; margin: 0 12px; border: 1px solid #ccc; flex-shrink: 0; background-color:${item.color};"></div><div style="min-width:0;"><strong>${item.name}</strong>${item.description?`<p style="font-size: 0.9em; color: #718096; margin-top: 5px; white-space: pre-wrap; word-break: break-word;">${item.description}</p>`:''}</div></div><div class="action-buttons" style="flex-shrink:0; margin-left: 10px;">${addBtn}<button class="edit-btn">Editar</button><button class="duplicate-btn">Duplicar</button><button class="delete-btn danger">Excluir</button></div>`;
-        return el;
-    }
-    
-    foldersListDiv.addEventListener('click', (e) => {
-        const button = e.target.closest('button');
-        const toggle = e.target.closest('.toggle-btn');
-        const itemEl = e.target.closest('[data-id]');
-        if (!itemEl) return;
-
-        if (toggle) {
-            const itemId = itemEl.dataset.id;
-            const itemType = itemEl.dataset.type;
-            const itemPath = findItemPath(itemId, itemType);
-            const item = itemPath[itemType];
-            if(item) {
-                item.isCollapsed = !item.isCollapsed;
-                saveData();
-                renderFolders();
+        // --- FUNÇÕES DE DADOS E INICIALIZAÇÃO ---
+        function getNextId(type) { if (!data.nextIds[type]) data.nextIds[type] = 1; const id = data.nextIds[type]; data.nextIds[type]++; return id; }
+        
+        function saveData() { try { localStorage.setItem('studyOrganizerData_v4', JSON.stringify(data)); } catch (e) { console.error("Erro ao salvar dados:", e); } }
+        
+        function loadData() {
+            const savedData = localStorage.getItem('studyOrganizerData_v4');
+            if (savedData) {
+                const parsedData = JSON.parse(savedData);
+                const defaultStructure = { folders: [], flashcardAreas: [], schedules: { activities: [], reviews: [] }, cycles: [], studyHistory: [], nextIds: { ...data.nextIds } };
+                data = { ...defaultStructure, ...parsedData };
+                data.nextIds = { ...defaultStructure.nextIds, ...(parsedData.nextIds || {}) };
             }
-            return;
         }
 
-        if (!button) return;
-        const { id, type, folderId, subjectId } = itemEl.dataset;
-
-        if (button.classList.contains('add-subject-btn')) openItemModal('subject', null, { folderId: id });
-        else if (button.classList.contains('add-topic-btn')) openItemModal('topic', null, { folderId, subjectId: id });
-        else if (button.classList.contains('edit-btn')) openItemModal(type, id, { folderId, subjectId });
-        else if (button.classList.contains('delete-btn')) {
-            if (!confirm('Excluir este item e todo o seu conteúdo?')) return;
-            if (type === 'folder') data.folders = data.folders.filter(f => f.id != id);
-            else if (type === 'subject') findItemPath(folderId, 'folder').folder.subjects = findItemPath(folderId, 'folder').folder.subjects.filter(s => s.id != id);
-            else if (type === 'topic') findItemPath(subjectId, 'subject').subject.topics = findItemPath(subjectId, 'subject').subject.topics.filter(t => t.id != id);
-            renderAll(); saveData();
-        } else if (button.classList.contains('duplicate-btn')) {
-            function deepCloneWithNewIds(item, type) {
-                const newItem = JSON.parse(JSON.stringify(item));
-                newItem.id = getNextId(type);
-                newItem.name += ' (Cópia)';
-                if (newItem.subjects) newItem.subjects = newItem.subjects.map(s => deepCloneWithNewIds(s, 'subject'));
-                if (newItem.topics) newItem.topics = newItem.topics.map(t => deepCloneWithNewIds(t, 'topic'));
-                if (newItem.attachments) newItem.attachments.forEach(a => a.id = getNextId('attachment'));
-                return newItem;
-            }
-            if (type === 'folder') {
-                const newFolder = deepCloneWithNewIds(findItemPath(id, 'folder').folder, 'folder');
-                data.folders.push(newFolder);
-            } else if (type === 'subject') {
-                const { folder, subject } = findItemPath(id, 'subject');
-                const newSubject = deepCloneWithNewIds(subject, 'subject');
-                folder.subjects.push(newSubject);
-            } else if (type === 'topic') {
-                const { subject, topic } = findItemPath(id, 'topic');
-                const newTopic = deepCloneWithNewIds(topic, 'topic');
-                subject.topics.push(newTopic);
-            }
-            renderAll(); saveData();
-        }
-    });
-
-    // --- LÓGICA DE ANEXOS ---
-    const directoryStatusDiv = document.getElementById('directory-status');
-    const addAttachmentBtn = document.getElementById('add-attachment-btn');
-    const attachmentSubjectSelect = document.getElementById('attachment-subject-select');
-    const attachmentTopicSelect = document.getElementById('attachment-topic-select');
-    const attachmentsListDiv = document.getElementById('attachments-list');
-    const attachmentTopicContainer = document.getElementById('attachment-topic-container');
-    const attachmentFlowStep2 = document.getElementById('attachment-flow-step2');
-    const attachmentDropZone = document.getElementById('attachment-flow-step2');
-    
-    function updateDirectoryStatus() { if (rootDirectoryHandle) { directoryStatusDiv.innerHTML = `<span>Pasta: <b>${rootDirectoryHandle.name}</b></span><button id="change-dir-btn">Trocar</button>`; addAttachmentBtn.disabled = false; addAttachmentBtn.textContent = 'Adicionar Anexo(s)'; document.getElementById('change-dir-btn').addEventListener('click', requestDirectoryPermission); } else { directoryStatusDiv.innerHTML = `<span>Nenhuma pasta configurada.</span><button id="select-dir-btn">Selecionar Pasta</button>`; addAttachmentBtn.disabled = true; addAttachmentBtn.textContent = 'Configure uma pasta'; document.getElementById('select-dir-btn').addEventListener('click', requestDirectoryPermission); } }
-    async function requestDirectoryPermission() { try { const handle = await window.showDirectoryPicker(); if ((await handle.queryPermission({ mode: 'readwrite' })) !== 'granted') if ((await handle.requestPermission({ mode: 'readwrite' })) !== 'granted') { alert("Permissão negada."); return; } rootDirectoryHandle = handle; await saveDirectoryHandle(handle); updateDirectoryStatus(); } catch (err) { console.error("Seleção cancelada:", err); } }
-    function updateAttachmentSelectors() {
-        attachmentSubjectSelect.innerHTML = '<option value="">Selecione uma Matéria...</option>';
-        data.folders.forEach(folder => {
-            folder.subjects.forEach(subject => {
-                const option = document.createElement('option');
-                option.value = subject.id;
-                option.textContent = `${folder.name} / ${subject.name}`;
-                option.dataset.folderId = folder.id;
-                attachmentSubjectSelect.add(option);
-            });
-        });
-        attachmentSubjectSelect.dispatchEvent(new Event('change'));
-    }
-    attachmentSubjectSelect.addEventListener('change', () => {
-        const subjectId = attachmentSubjectSelect.value;
-        attachmentTopicSelect.innerHTML = '<option value="">Selecione um Assunto...</option>';
-        if (subjectId) {
-            const subject = findItemPath(subjectId, 'subject').subject;
-            subject.topics.forEach(topic => {
-                attachmentTopicSelect.innerHTML += `<option value="${topic.id}">${topic.name}</option>`;
-            });
-            attachmentTopicContainer.style.display = 'block';
-        } else {
-            attachmentTopicContainer.style.display = 'none';
-        }
-        attachmentFlowStep2.style.display = 'none';
-    });
-    attachmentTopicSelect.addEventListener('change', async () => {
-        const topicId = attachmentTopicSelect.value;
-        if (topicId) {
-            const { folder, subject, topic } = findItemPath(topicId, 'topic');
-            document.getElementById('attachment-selection-info').innerHTML = `<h3>${folder.name} / ${subject.name} / ${topic.name}</h3>`;
-            attachmentFlowStep2.style.display = 'block';
-            await renderAttachments(folder.id, subject.id, topic.id);
-        } else {
-            attachmentFlowStep2.style.display = 'none';
-        }
-    });
-    async function handleFileUploads(files) {
-        const topicId = attachmentTopicSelect.value;
-        if (!topicId) { alert("Por favor, selecione uma matéria e um assunto primeiro."); return; }
-        try {
-            if ((await rootDirectoryHandle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
-                if ((await rootDirectoryHandle.requestPermission({ mode: 'readwrite' })) !== 'granted') {
-                    alert("A permissão para escrever na pasta de anexos é necessária."); return;
-                }
-            }
-        } catch (error) { console.error("Erro ao verificar/solicitar permissão:", error); alert("Não foi possível verificar a permissão da pasta."); return; }
-        const { folder, subject, topic } = findItemPath(topicId, 'topic');
-        if (!topic || !rootDirectoryHandle) return;
-        if (!topic.attachments) topic.attachments = [];
-        for (const file of files) {
+        async function initializeApp() {
             try {
-                try { await rootDirectoryHandle.getFileHandle(file.name); } 
-                catch (e) {
-                    const newFileHandle = await rootDirectoryHandle.getFileHandle(file.name, { create: true });
-                    const writable = await newFileHandle.createWritable();
-                    await writable.write(file);
-                    await writable.close();
-                }
-                if (!topic.attachments.some(att => att.name === file.name)) {
-                    topic.attachments.push({ id: getNextId('attachment'), type: 'filesystem', name: file.name });
-                }
-            } catch (err) { console.error(`Falha ao processar o arquivo ${file.name}:`, err); alert(`Ocorreu um erro ao salvar o arquivo ${file.name}.`); }
-        }
-        saveData();
-        await renderAttachments(folder.id, subject.id, topic.id);
-    }
-    addAttachmentBtn.addEventListener('click', async () => { try { const fileHandles = await window.showOpenFilePicker({ multiple: true }); const files = await Promise.all(fileHandles.map(handle => handle.getFile())); await handleFileUploads(files); } catch (err) { console.log("Seleção de arquivo cancelada.", err); } });
-    attachmentDropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); attachmentDropZone.classList.add('drop-zone-active'); });
-    attachmentDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); attachmentDropZone.classList.remove('drop-zone-active'); });
-    attachmentDropZone.addEventListener('drop', async (e) => { e.preventDefault(); e.stopPropagation(); attachmentDropZone.classList.remove('drop-zone-active'); const files = e.dataTransfer.files; if (files.length > 0) { await handleFileUploads(files); } });
-    async function renderAttachments(folderId, subjectId, topicId) {
-        attachmentsListDiv.innerHTML = '';
-        const { topic } = findItemPath(topicId, 'topic');
-        if (!topic.attachments || topic.attachments.length === 0) { attachmentsListDiv.innerHTML = '<p>Nenhum anexo.</p>'; return; }
-        const htmlPromises = topic.attachments.map(async (att) => {
-            if (att.type === 'filesystem' && rootDirectoryHandle) {
-                try {
-                    const file = await (await rootDirectoryHandle.getFileHandle(att.name)).getFile();
-                    const url = URL.createObjectURL(file);
-                    return `<div class="attachment-item"><a href="${url}" target="_blank" rel="noopener noreferrer">${att.name}</a><button class="delete-btn danger" data-id="${att.id}">Excluir</button></div>`;
-                } catch (error) { return `<div class="attachment-item"><a class="file-not-found" style="color:var(--danger-color); text-decoration:line-through;">${att.name} (Não encontrado)</a><button class="delete-btn danger" data-id="${att.id}">Excluir</button></div>`; }
-            } return '';
-        });
-        attachmentsListDiv.innerHTML = (await Promise.all(htmlPromises)).join('');
-        attachmentsListDiv.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                if (confirm('Excluir referência? O arquivo físico não será apagado.')) {
-                    const { topic } = findItemPath(topicId, 'topic');
-                    topic.attachments = topic.attachments.filter(a => a.id != btn.dataset.id);
-                    saveData();
-                    await renderAttachments(folderId, subjectId, topicId);
-                }
-            });
-        });
-    }
-
-    // --- LÓGICA DE FLASHCARDS ---
-    const flashcardAreasContainer = document.getElementById('flashcard-areas-container');
-    const areaForm = document.getElementById('flashcard-area-form');
-    const workspace = document.getElementById('flashcard-workspace');
-    const workspaceCanvas = document.getElementById('workspace-canvas');
-    function renderFlashcardAreas() {
-        flashcardAreasContainer.innerHTML = '';
-        data.flashcardAreas.forEach(area => {
-            const areaEl = document.createElement('div');
-            areaEl.className = 'flashcard-area-card'; areaEl.dataset.id = area.id; areaEl.style.borderTop = `5px solid ${area.color}`;
-            areaEl.innerHTML = `<div><h3>${area.name}</h3><p>${area.cards.length} cartão(s)</p></div><div class="action-buttons"><button class="edit-btn">Editar</button><button class="duplicate-btn">Duplicar</button><button class="delete-btn danger">Excluir</button></div>`;
-            areaEl.addEventListener('click', (e) => { if (!e.target.closest('button')) openWorkspace(area.id); });
-            flashcardAreasContainer.appendChild(areaEl);
-        });
-    }
-    document.getElementById('add-flashcard-area-btn').addEventListener('click', () => { areaForm.reset(); document.getElementById('flashcard-area-modal-title').innerText = 'Nova Área'; document.getElementById('flashcard-area-edit-id').value = ''; openModal('flashcard-area-modal'); });
-    areaForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('flashcard-area-name').value, color = document.getElementById('flashcard-area-color').value;
-        const editId = document.getElementById('flashcard-area-edit-id').value;
-        if (editId) Object.assign(data.flashcardAreas.find(a => a.id == editId), {name, color});
-        else data.flashcardAreas.push({ id: getNextId('flashcardArea'), name, color, cards: [] });
-        renderFlashcardAreas(); saveData(); closeModal();
-    });
-    flashcardAreasContainer.addEventListener('click', (e) => {
-        const button = e.target.closest('button'); if (!button) return;
-        const id = e.target.closest('.flashcard-area-card').dataset.id;
-        if (button.classList.contains('edit-btn')) {
-            const area = data.flashcardAreas.find(a => a.id == id);
-            document.getElementById('flashcard-area-modal-title').innerText = 'Editar Área';
-            document.getElementById('flashcard-area-edit-id').value = id;
-            document.getElementById('flashcard-area-name').value = area.name;
-            document.getElementById('flashcard-area-color').value = area.color;
-            openModal('flashcard-area-modal');
-        } else if (button.classList.contains('delete-btn')) {
-            if (confirm('Excluir área e flashcards?')) { data.flashcardAreas = data.flashcardAreas.filter(a => a.id != id); renderFlashcardAreas(); saveData(); }
-        } else if (button.classList.contains('duplicate-btn')) {
-            const newArea = JSON.parse(JSON.stringify(data.flashcardAreas.find(a => a.id == id)));
-            newArea.id = getNextId('flashcardArea'); newArea.name += ' (Cópia)';
-            newArea.cards.forEach(c => c.id = getNextId('flashcard'));
-            data.flashcardAreas.push(newArea);
-            renderFlashcardAreas(); saveData();
-        }
-    });
-    function openWorkspace(areaId) { 
-        workspace.dataset.areaId = areaId; 
-        document.getElementById('workspace-title').innerText = data.flashcardAreas.find(a => a.id == areaId).name; 
-        renderCardsInWorkspace(areaId); 
-        workspace.style.display = 'flex'; 
-    }
-    document.querySelector('.workspace-close-btn').addEventListener('click', () => { workspace.style.display = 'none'; renderFlashcardAreas(); });
-    document.getElementById('add-card-to-workspace-btn').addEventListener('click', () => { const area = data.flashcardAreas.find(a => a.id == workspace.dataset.areaId); area.cards.push({ id: getNextId('flashcard'), content: '', color: '#fffbe0', x: 20, y: 20 }); renderCardsInWorkspace(area.id); saveData(); });
-    function renderCardsInWorkspace(areaId) { workspaceCanvas.innerHTML = ''; data.flashcardAreas.find(a => a.id == areaId).cards.forEach(card => workspaceCanvas.appendChild(createFlashcardElement(card, areaId))); }
-    function createFlashcardElement(card, areaId) {
-        const cardEl = document.createElement('div'); cardEl.className = 'flashcard'; Object.assign(cardEl.style, {left: card.x+'px', top: card.y+'px', backgroundColor: card.color}); cardEl.dataset.id = card.id;
-        cardEl.innerHTML = `<div class="flashcard-header" style="display:flex; justify-content: flex-end; align-items:center; padding-bottom:5px;"><input type="color" class="flashcard-color-picker" value="${card.color}" style="margin-right:auto;"><div class="flashcard-actions"><button class="duplicate-card" title="Duplicar">❏</button><button class="delete-card" title="Excluir">×</button></div></div><textarea class="flashcard-textarea">${card.content}</textarea>`;
-        let isDragging=false,offsetX,offsetY;
-        cardEl.addEventListener('mousedown',(e)=>{if(e.target.matches('textarea,input,button'))return;isDragging=true;offsetX=e.clientX-cardEl.offsetLeft;offsetY=e.clientY-cardEl.offsetTop;cardEl.style.zIndex=10;});
-        document.addEventListener('mousemove',(e)=>{if(isDragging){cardEl.style.left=(e.clientX-offsetX)+'px';cardEl.style.top=(e.clientY-offsetY)+'px';}});
-        document.addEventListener('mouseup',()=>{if(isDragging){const c=data.flashcardAreas.find(a=>a.id==areaId).cards.find(c=>c.id==card.id);c.x=cardEl.offsetLeft;c.y=cardEl.offsetTop;isDragging=false;cardEl.style.zIndex=1;saveData();}});
-        cardEl.querySelector('.flashcard-textarea').addEventListener('input',(e)=>{data.flashcardAreas.find(a=>a.id==areaId).cards.find(c=>c.id==card.id).content=e.target.value;saveData();});
-        cardEl.querySelector('.flashcard-color-picker').addEventListener('input',(e)=>{const c=data.flashcardAreas.find(a=>a.id==areaId).cards.find(c=>c.id==card.id);c.color=e.target.value;cardEl.style.backgroundColor=e.target.value;saveData();});
-        cardEl.querySelector('.delete-card').addEventListener('click',()=>{const a=data.flashcardAreas.find(a=>a.id==areaId);a.cards=a.cards.filter(c=>c.id!=card.id);renderCardsInWorkspace(areaId);saveData();});
-        cardEl.querySelector('.duplicate-card').addEventListener('click',()=>{const a=data.flashcardAreas.find(a=>a.id==areaId);const o=a.cards.find(c=>c.id==card.id);const n=JSON.parse(JSON.stringify(o));n.id=getNextId('flashcard');n.x+=20;n.y+=20;a.cards.push(n);renderCardsInWorkspace(areaId);saveData();});
-        return cardEl;
-    }
-
-    // --- LÓGICA DE AGENDAMENTOS ---
-    const scheduleForm = document.getElementById('schedule-form');
-    function renderSchedules() {
-        document.getElementById('scheduled-activities-list').innerHTML = data.schedules.activities.sort((a,b)=>new Date(a.startTime)-new Date(b.startTime)).map(createScheduleElement).join('');
-        document.getElementById('scheduled-reviews-list').innerHTML = data.schedules.reviews.sort((a,b)=>new Date(a.startTime)-new Date(b.startTime)).map(createScheduleElement).join('');
-        document.querySelectorAll('.schedule-item .edit-btn').forEach(btn => btn.addEventListener('click', (e) => openScheduleModal(e.target.dataset.type, e.target.dataset.id)));
-        document.querySelectorAll('.schedule-item .delete-btn').forEach(btn => btn.addEventListener('click', (e) => { if (confirm('Excluir?')) { const k=e.target.dataset.type==='activity'?'activities':'reviews'; data.schedules[k]=data.schedules[k].filter(i=>i.id!=e.target.dataset.id); renderSchedules(); saveData(); }}));
-    }
-    function createScheduleElement(item) {
-        const path = findItemPath(item.topicId, 'topic');
-        return `<div class="schedule-item ${item.completed ? 'completed' : ''}">
-                    <div>
-                        <strong>${path.folder?.name||'?'}/${path.subject?.name||'?'}>${path.topic?.name||'?'}</strong>
-                        <div class="schedule-info">
-                            <span>Início: ${new Date(item.startTime).toLocaleString('pt-BR')}</span>
-                            <span>Fim: ${new Date(item.endTime).toLocaleString('pt-BR')}</span>
-                        </div>
-                    </div>
-                    <div class="action-buttons">
-                        <button class="edit-btn" data-id="${item.id}" data-type="${item.type}">Editar</button>
-                        <button class="delete-btn danger" data-id="${item.id}" data-type="${item.type}">Excluir</button>
-                    </div>
-                </div>`;
-    }
-    document.getElementById('add-schedule-btn').addEventListener('click', () => openScheduleModal('activity'));
-    document.getElementById('add-review-btn').addEventListener('click', () => openScheduleModal('review'));
-    scheduleForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const editId = document.getElementById('schedule-edit-id').value; const newStart = new Date(document.getElementById('start-time').value); const newEnd = new Date(document.getElementById('end-time').value);
-        if (!newStart.getTime() || !newEnd.getTime() || newEnd <= newStart) { alert("Horários inválidos."); return; }
-        const hasConflict = [...data.schedules.activities, ...data.schedules.reviews].some(event => { if (editId && event.id == editId) return false; const oldStart = new Date(event.startTime); const oldEnd = new Date(event.endTime); return (newStart < oldEnd) && (newEnd > oldStart); });
-        if (hasConflict) { alert("Conflito de horário!"); return; }
-        const subjectIdVal = document.getElementById('schedule-subject').value;
-        const topicIdVal = document.getElementById('schedule-topic').value;
-        if (!subjectIdVal || !topicIdVal) { alert("Selecione matéria e assunto."); return; }
-        const scheduleData = { 
-            subjectId: parseInt(subjectIdVal, 10), 
-            topicId: parseInt(topicIdVal, 10), 
-            startTime:document.getElementById('start-time').value, 
-            endTime:document.getElementById('end-time').value, 
-            type:document.getElementById('schedule-type').value 
-        };
-        const listKey = scheduleData.type === 'activity' ? 'activities' : 'reviews';
-        if (editId) { const index = data.schedules[listKey].findIndex(i => i.id == editId); data.schedules[listKey][index] = { ...data.schedules[listKey][index], ...scheduleData, notified: false, completed: false }; } 
-        else { data.schedules[listKey].push({ id: getNextId('schedule'), ...scheduleData, notified: false, completed: false }); }
-        renderSchedules(); saveData(); closeModal();
-    });
-    function openScheduleModal(type, id = null) {
-        scheduleForm.reset(); document.getElementById('schedule-type').value = type;
-        const subjectSelect = document.getElementById('schedule-subject'); const topicSelect = document.getElementById('schedule-topic');
-        subjectSelect.innerHTML = '<option value="">Selecione...</option>';
-        data.folders.forEach(folder => folder.subjects.forEach(subject => subjectSelect.innerHTML += `<option value="${subject.id}">${folder.name} / ${subject.name}</option>`));
-        subjectSelect.onchange = () => {
-            topicSelect.innerHTML = '<option value="">Selecione...</option>'; const subject = findItemPath(subjectSelect.value, 'subject').subject;
-            if (subject) subject.topics.forEach(t => topicSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
-        };
-        if (id) {
-            const item = type === 'activity' ? data.schedules.activities.find(i => i.id == id) : data.schedules.reviews.find(i => i.id == id);
-            document.getElementById('schedule-modal-title').innerText = `Editar ${type==='activity'?'Atividade':'Revisão'}`;
-            document.getElementById('schedule-edit-id').value = id;
-            if (item.subjectId) { subjectSelect.value = item.subjectId; subjectSelect.dispatchEvent(new Event('change')); topicSelect.value = item.topicId; }
-            document.getElementById('start-time').value = item.startTime; document.getElementById('end-time').value = item.endTime;
-        } else { document.getElementById('schedule-modal-title').innerText = `Agendar ${type==='activity'?'Atividade':'Revisão'}`; document.getElementById('schedule-edit-id').value = ''; topicSelect.innerHTML = '<option value="">Selecione a matéria</option>'; }
-        openModal('schedule-modal');
-    }
-    
-    // --- LÓGICA DE LOGGING E ALARME ---
-    function logSession(subjectId, topicId, durationSeconds, type, sessionDate = new Date()) {
-        if (!durationSeconds || durationSeconds <= 0) return;
-        data.studyHistory.push({
-            id: getNextId('history'), 
-            subjectId: subjectId || null, 
-            topicId: topicId || null,
-            duration: durationSeconds, type: type, date: sessionDate.toISOString()
-        });
-        saveData();
-    }
-    function playAlarm(message) {
-        if (activeAlarmSound) return;
-        initAudioContext();
-        activeAlarmSound = playDefaultBeep();
-        if(activeAlarmSound) {
-            document.getElementById('alarm-text').textContent = message || "ALARME!";
-            document.getElementById('alarm-banner').style.display = 'flex';
-        }
-    }
-    function stopAlarmSound() {
-        stopDefaultBeep(activeAlarmSound);
-        activeAlarmSound = null;
-        document.getElementById('alarm-banner').style.display = 'none';
-    }
-    document.getElementById('stop-alarm-btn').addEventListener('click', stopAlarmSound);
-    function startAlarmSystem() {
-        if (alarmInterval) clearInterval(alarmInterval);
-        const checkSchedules = () => {
-            const now = new Date();
-            let needsSave = false;
-            let needsRender = false;
-            [...data.schedules.activities, ...data.schedules.reviews].forEach(item => {
-                const startTime = new Date(item.startTime);
-                const endTime = new Date(item.endTime);
-                if (now >= startTime && !item.notified) {
-                    playAlarm(`Hora de iniciar: ${findItemPath(item.topicId, 'topic').topic?.name || 'Atividade Agendada'}`);
-                    item.notified = true;
-                    needsSave = true;
-                }
-                if (now >= endTime && !item.completed) {
-                    const durationSeconds = Math.round((endTime - startTime) / 1000);
-                    if (durationSeconds > 0) {
-                        const sessionType = item.type === 'activity' ? 'study_scheduled' : 'study_review';
-                        logSession(item.subjectId, item.topicId, durationSeconds, sessionType, endTime);
-                    }
-                    item.completed = true;
-                    needsSave = true;
-                    needsRender = true;
-                }
-            });
-            if (needsSave) {
-                saveData();
-                if (needsRender && document.querySelector('.tab-link[data-tab="schedules"].active')) {
-                    renderSchedules();
-                }
-            }
-        };
-        checkSchedules();
-        alarmInterval = setInterval(checkSchedules, 30000);
-    }
-    
-    // --- LÓGICA DO CRONÔMETRO E CICLOS ---
-    const timerSubjectSelect = document.getElementById('timer-subject-select');
-    const timerTopicSelect = document.getElementById('timer-topic-select');
-    const timerDisplay = document.getElementById('timer-display');
-    const startTimerBtn = document.getElementById('start-timer-btn');
-    const pauseTimerBtn = document.getElementById('pause-timer-btn');
-    const resetTimerBtn = document.getElementById('reset-timer-btn');
-    const cycleStatusBanner = document.getElementById('cycle-status-banner');
-
-    function populateTimerSelectors(subjectSelect, topicSelect) {
-        subjectSelect.innerHTML = '<option value="">Selecione a Matéria...</option>';
-        data.folders.forEach(folder => {
-            const optgroup = document.createElement('optgroup');
-            optgroup.label = folder.name;
-            folder.subjects.forEach(subject => {
-                optgroup.innerHTML += `<option value="${subject.id}">${subject.name}</option>`;
-            });
-            subjectSelect.appendChild(optgroup);
-        });
-        subjectSelect.onchange = () => {
-            topicSelect.innerHTML = '<option value="">Selecione o Assunto...</option>';
-            if (subjectSelect.value) {
-                const subject = findItemPath(subjectSelect.value, 'subject').subject;
-                if (subject) subject.topics.forEach(t => topicSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
-            }
-        };
-        subjectSelect.dispatchEvent(new Event('change'));
-    }
-
-    function updateTimerDisplay(seconds) {
-        const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
-        const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
-        const s = Math.floor(seconds % 60).toString().padStart(2, '0');
-        timerDisplay.textContent = `${h}:${m}:${s}`;
-        document.title = `${h}:${m}:${s} - Foco`;
-    }
-
-    function updateTimerButtons() {
-        startTimerBtn.disabled = timerState === 'running' || isCycleRunning;
-        pauseTimerBtn.disabled = timerState !== 'running' || isCycleRunning;
-        resetTimerBtn.disabled = timerState === 'stopped';
-        document.getElementById('timer-subject-select').disabled = timerState !== 'stopped';
-        document.getElementById('timer-topic-select').disabled = timerState !== 'stopped';
-        document.getElementById('timer-duration').disabled = timerState !== 'stopped';
-        document.getElementById('timer-rest-duration').disabled = timerState !== 'stopped';
-    }
-
-    function startTimer(durationInSeconds = null) {
-        if(timerState === 'running') return;
-
-        if (timerState === 'stopped') {
-            if (durationInSeconds !== null) {
-                initialDuration = durationInSeconds;
-            } else {
-                const durationInput = document.getElementById('timer-duration');
-                initialDuration = (parseInt(durationInput.value) || 0) * 60;
-            }
-            
-            if(initialDuration <= 0) { alert("Por favor, insira uma duração válida."); return; }
-            timeLeft = initialDuration;
-            
-            if (currentTimerType === 'study' && !isCycleRunning && !timerSubjectSelect.value) {
-                alert("Por favor, selecione uma matéria para a sessão de estudo."); return;
-            }
+                await initDB();
+                rootDirectoryHandle = await loadDirectoryHandle();
+                loadData();
+                updateDirectoryStatus();
+                renderAll();
+                startAlarmSystem();
+                setupSidebarToggle();
+                setupThemeToggle();
+            } catch (error) { console.error("Falha na inicialização:", error); alert("Ocorreu um erro. Verifique o console (F12).") }
         }
         
-        timerState = 'running';
-        updateTimerButtons();
-        timerDisplay.classList.toggle('active-rest', currentTimerType === 'rest');
-        
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            updateTimerDisplay(timeLeft);
-            if (timeLeft <= 0) {
-                clearInterval(timerInterval);
-                document.title = "Organizador de Estudos";
-                
-                if (isCycleRunning) {
-                    if (currentTimerType === 'study_cycle') {
-                        const cycle = data.cycles.find(c => c.id == currentCycleId);
-                        const step = cycle.steps[currentCycleStepIndex];
-                        logSession(step.subjectId, step.topicId, initialDuration, 'study_cycle');
-                        playAlarm(`Etapa de estudo concluída!`);
-                    } else { 
-                        logSession(null, null, initialDuration, 'rest');
-                        playAlarm(`Descanso concluído!`);
-                    }
-                    runNextCycleStep();
-                } else {
-                    if (currentTimerType === 'study') {
-                        const subjectId = timerSubjectSelect.value ? parseInt(timerSubjectSelect.value, 10) : null;
-                        const topicId = timerTopicSelect.value ? parseInt(timerTopicSelect.value, 10) : null;
-                        logSession(subjectId, topicId, initialDuration, 'study_timer');
-                        playAlarm("Sessão de estudo finalizada! Iniciando descanso.");
-                        const restMinutes = parseInt(document.getElementById('timer-rest-duration').value, 10);
-                        if (restMinutes > 0) {
-                            currentTimerType = 'rest';
-                            timerState = 'stopped';
-                            startTimer(restMinutes * 60);
-                        } else {
-                            resetTimer();
+        function renderAll() { 
+            renderFolders(); 
+            renderFlashcardAreas(); 
+            updateAttachmentSelectors(); 
+            renderSchedules();
+            renderCycles();
+            populateTimerSelectors(document.getElementById('timer-subject-select'), document.getElementById('timer-topic-select'));
+        }
+
+        function initDB() { return new Promise((resolve, reject) => { const request = indexedDB.open('StudyAppDB_v4', 1); request.onerror = () => reject("Erro ao abrir IndexedDB."); request.onsuccess = (event) => { db = event.target.result; resolve(); }; request.onupgradeneeded = (event) => { const db = event.target.result; if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' }); }; }); }
+        function saveDirectoryHandle(handle) { if (!db) return Promise.reject("DB não inicializado."); const transaction = db.transaction(['settings'], 'readwrite'); return transaction.objectStore('settings').put({ id: 'rootDirectory', handle }); }
+        function loadDirectoryHandle() { if (!db) return Promise.resolve(null); const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('rootDirectory'); return new Promise((resolve) => { request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
+
+        function initAudioContext() { if (!audioContext && (window.AudioContext || window.webkitAudioContext)) try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { console.error("Web Audio API não é suportada.", e); } }
+        function playDefaultBeep() { if (!audioContext) return null; if (audioContext.state === 'suspended') audioContext.resume(); const gainNode = audioContext.createGain(); gainNode.connect(audioContext.destination); const oscillator = audioContext.createOscillator(); oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(880, audioContext.currentTime); oscillator.connect(gainNode); oscillator.start(); const interval = setInterval(() => { gainNode.gain.cancelScheduledValues(audioContext.currentTime); gainNode.gain.setValueAtTime(gainNode.gain.value, audioContext.currentTime); gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.1); gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5); }, 600); return { oscillator, gainNode, interval }; }
+        function stopDefaultBeep(beep) { if (!beep) return; clearInterval(beep.interval); beep.oscillator.stop(); beep.oscillator.disconnect(); beep.gainNode.disconnect(); }
+
+        function findItemPath(itemId, itemType) {
+            if (!itemId || !itemType) return {};
+            for (const folder of data.folders) {
+                if (itemType === 'folder' && folder.id == itemId) return { folder };
+                for (const subject of folder.subjects) {
+                    if (itemType === 'subject' && subject.id == itemId) return { folder, subject };
+                    if (itemType === 'topic') {
+                        for (const topic of subject.topics) {
+                            if (topic.id == itemId) return { folder, subject, topic };
                         }
-                    } else { 
-                        logSession(null, null, initialDuration, 'rest');
-                        playAlarm("Descanso finalizado!");
-                        resetTimer();
                     }
                 }
             }
-        }, 1000);
-    }
+            return {};
+        }
 
-    function pauseTimer() {
-        if(timerState !== 'running') return;
-        clearInterval(timerInterval);
-        timerState = 'paused';
-        updateTimerButtons();
-    }
-
-    function resetTimer() {
-        clearInterval(timerInterval);
-        if (isCycleRunning) stopCycle();
-        timerState = 'stopped';
-        currentTimerType = 'study';
-        timeLeft = 0;
-        initialDuration = 0;
-        updateTimerDisplay(0);
-        updateTimerButtons();
-        timerDisplay.classList.remove('active-rest');
-        document.title = "Organizador de Estudos";
-    }
-    
-    startTimerBtn.addEventListener('click', () => startTimer());
-    pauseTimerBtn.addEventListener('click', pauseTimer);
-    resetTimerBtn.addEventListener('click', resetTimer);
-
-    // --- LÓGICA DOS CICLOS ---
-    const cyclesContainer = document.getElementById('cycles-container');
-    const cycleModal = document.getElementById('cycle-modal');
-    const cycleForm = document.getElementById('cycle-form');
-    const addCycleBtn = document.getElementById('add-cycle-btn');
-
-    function renderCycles() {
-        cyclesContainer.innerHTML = '';
-        data.cycles.forEach(cycle => {
-            const card = document.createElement('div');
-            card.className = 'cycle-card';
-            card.style.borderColor = cycle.color;
-            card.innerHTML = `
-                <div class="cycle-card-header">
-                    <h4>${cycle.name}</h4>
-                    <div style="width: 20px; height: 20px; border-radius: 4px; flex-shrink: 0; border: 1px solid #ccc; background-color: ${cycle.color};"></div>
-                </div>
-                <p>${cycle.steps.length} etapas, ${cycle.repetitions}x</p>
-                <div class="action-buttons">
-                    <button class="edit-btn" data-id="${cycle.id}">Editar</button>
-                    <button class="duplicate-btn" data-id="${cycle.id}">Duplicar</button>
-                    <button class="delete-btn danger" data-id="${cycle.id}">Excluir</button>
-                </div>
-                <button class="start-cycle-btn" data-id="${cycle.id}">Iniciar Ciclo</button>
-            `;
-            cyclesContainer.appendChild(card);
+        // --- LÓGICA DE NAVEGAÇÃO E UI GERAL ---
+        function setupSidebarToggle() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            const applyState = (isCollapsed) => {
+                sidebar.classList.toggle('collapsed', isCollapsed);
+                toggleBtn.classList.toggle('collapsed', isCollapsed);
+            };
+            toggleBtn.addEventListener('click', () => {
+                const isCollapsed = sidebar.classList.toggle('collapsed');
+                toggleBtn.classList.toggle('collapsed', isCollapsed);
+                localStorage.setItem('sidebarCollapsed_v4', isCollapsed);
+            });
+            applyState(localStorage.getItem('sidebarCollapsed_v4') === 'true');
+        }
+        
+        function setupThemeToggle() {
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            themeToggleBtn.addEventListener('click', () => {
+                document.body.classList.toggle('dark-theme');
+                if (document.body.classList.contains('dark-theme')) {
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+        }
+        
+        const modals = document.querySelectorAll('.modal');
+        const tabLinks = document.querySelectorAll('.tab-link');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tabId = e.target.getAttribute('data-tab');
+                tabLinks.forEach(l => l.classList.remove('active'));
+                e.target.classList.add('active');
+                tabContents.forEach(content => {
+                    const isActive = content.id === `${tabId}-tab`;
+                    content.style.display = isActive ? 'block' : 'none';
+                    if(isActive) content.classList.add('active');
+                    else content.classList.remove('active');
+                });
+                if (tabId === 'attachments') updateAttachmentSelectors();
+                if (tabId === 'cronometro') populateTimerSelectors(document.getElementById('timer-subject-select'), document.getElementById('timer-topic-select'));
+                if (tabId === 'graficos') renderChart();
+            });
         });
-    }
+        function openModal(modalId) { 
+            document.getElementById(modalId).style.display = 'flex';
+        }
+        function closeModal() { modals.forEach(modal => modal.style.display = 'none'); }
+        document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', closeModal));
+        window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) closeModal(); });
+        
+        // --- LÓGICA DE PASTAS / MATÉRIAS / ASSUNTOS ---
+        const itemForm = document.getElementById('item-form');
+        const foldersListDiv = document.getElementById('folders-list');
+        document.getElementById('change-color-button').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('color-picker-input').click(); });
+        document.getElementById('color-picker-input').addEventListener('input', (e) => { document.getElementById('modal-color-preview').style.backgroundColor = e.target.value; });
 
-    addCycleBtn.addEventListener('click', () => openCycleModal());
+        function openItemModal(type, editId = null, parentIds = {}) {
+            itemForm.reset();
+            document.getElementById('item-type').value = type;
+            document.getElementById('item-id').value = editId || '';
+            document.getElementById('parent-folder-id').value = parentIds.folderId || '';
+            document.getElementById('parent-subject-id').value = parentIds.subjectId || '';
+            let title = `${editId ? 'Editar' : 'Adicionar'}`;
+            let item = { color: '#888888' };
+            if (editId) {
+                const path = findItemPath(editId, type);
+                item = path[type];
+            }
+            switch(type) {
+                case 'folder': title += ' Pasta'; break;
+                case 'subject': title += ' Matéria'; break;
+                case 'topic': title += ' Assunto'; break;
+            }
+            document.getElementById('item-modal-title').innerText = title;
+            document.getElementById('item-name').value = item.name || '';
+            document.getElementById('item-description').value = item.description || '';
+            document.getElementById('color-picker-input').value = item.color || '#4299e1';
+            document.getElementById('modal-color-preview').style.backgroundColor = item.color || '#4299e1';
+            openModal('item-modal');
+        }
 
-    cyclesContainer.addEventListener('click', e => {
-        const target = e.target;
-        const cycleId = target.dataset.id;
-        if (!cycleId) return;
+        document.getElementById('add-folder-btn').addEventListener('click', () => openItemModal('folder'));
 
-        if (target.classList.contains('start-cycle-btn')) {
-            if (timerState !== 'stopped') {
-                alert("Por favor, pare o cronômetro atual antes de iniciar um ciclo.");
+        itemForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('item-id').value;
+            const type = document.getElementById('item-type').value;
+            const parentFolderId = document.getElementById('parent-folder-id').value;
+            const parentSubjectId = document.getElementById('parent-subject-id').value;
+            const itemData = { name: document.getElementById('item-name').value, description: document.getElementById('item-description').value, color: document.getElementById('color-picker-input').value };
+
+            if (type === 'folder') {
+                if (id) Object.assign(findItemPath(id, 'folder').folder, itemData);
+                else data.folders.push({ id: getNextId('folder'), ...itemData, subjects: [], isCollapsed: false });
+            } else if (type === 'subject') {
+                const folder = findItemPath(parentFolderId, 'folder').folder;
+                if (id) Object.assign(folder.subjects.find(s => s.id == id), itemData);
+                else folder.subjects.push({ id: getNextId('subject'), ...itemData, topics: [], isCollapsed: false });
+            } else if (type === 'topic') {
+                const { subject } = findItemPath(parentSubjectId, 'subject');
+                if (id) Object.assign(subject.topics.find(t => t.id == id), itemData);
+                else subject.topics.push({ id: getNextId('topic'), ...itemData, attachments: [] });
+            }
+            renderAll(); saveData(); closeModal();
+        });
+
+        function renderFolders() {
+            foldersListDiv.innerHTML = '';
+            data.folders.forEach(folder => {
+                const folderContainer = document.createElement('div');
+                folderContainer.className = 'item-container';
+                folderContainer.dataset.id = folder.id;
+                folderContainer.appendChild(createItemElement('folder', folder));
+                
+                const folderContent = document.createElement('div');
+                folderContent.className = 'content-container';
+                if (folder.isCollapsed) folderContent.classList.add('collapsed');
+                
+                folder.subjects.forEach(subject => {
+                    const subjectContainer = document.createElement('div');
+                    subjectContainer.className = 'item-container';
+                    subjectContainer.appendChild(createItemElement('subject', subject, { folderId: folder.id }));
+                    
+                    const subjectContent = document.createElement('div');
+                    subjectContent.className = 'content-container';
+                    if(subject.isCollapsed) subjectContent.classList.add('collapsed');
+
+                    subject.topics.forEach(topic => {
+                        subjectContent.appendChild(createItemElement('topic', topic, { folderId: folder.id, subjectId: subject.id }));
+                    });
+                    
+                    subjectContainer.appendChild(subjectContent);
+                    folderContent.appendChild(subjectContainer);
+                });
+                folderContainer.appendChild(folderContent);
+                foldersListDiv.appendChild(folderContainer);
+            });
+        }
+
+        function createItemElement(type, item, parentIds = {}) {
+            const el = document.createElement('div');
+            el.className = `${type}-item`;
+            el.style.borderLeftColor = item.color;
+            el.dataset.id = item.id;
+            el.dataset.type = type;
+            Object.keys(parentIds).forEach(key => { el.dataset[key] = parentIds[key]; });
+            
+            let addBtn = '', toggleBtn = '';
+            if (type === 'folder' || type === 'subject') {
+                const isCollapsed = item.isCollapsed ? 'collapsed' : '';
+                toggleBtn = `<span class="toggle-btn ${isCollapsed}" style="font-size: 1.2em; user-select: none; transition: transform 0.2s; cursor:pointer;">▾</span>`;
+            }
+            if (type === 'folder') addBtn = `<button class="add-subject-btn">+ Matéria</button>`;
+            if (type === 'subject') addBtn = `<button class="add-topic-btn">+ Assunto</button>`;
+            
+            el.innerHTML = `<div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">${toggleBtn}<div style="width: 18px; height: 18px; border-radius: 4px; margin: 0 12px; border: 1px solid #ccc; flex-shrink: 0; background-color:${item.color};"></div><div style="min-width:0;"><strong>${item.name}</strong>${item.description?`<p style="font-size: 0.9em; color: #718096; margin-top: 5px; white-space: pre-wrap; word-break: break-word;">${item.description}</p>`:''}</div></div><div class="action-buttons" style="flex-shrink:0; margin-left: 10px;">${addBtn}<button class="edit-btn">Editar</button><button class="duplicate-btn">Duplicar</button><button class="delete-btn danger">Excluir</button></div>`;
+            return el;
+        }
+        
+        foldersListDiv.addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            const toggle = e.target.closest('.toggle-btn');
+            const itemEl = e.target.closest('[data-id]');
+            if (!itemEl) return;
+
+            if (toggle) {
+                const itemId = itemEl.dataset.id;
+                const itemType = itemEl.dataset.type;
+                const itemPath = findItemPath(itemId, itemType);
+                const item = itemPath[itemType];
+                if(item) {
+                    item.isCollapsed = !item.isCollapsed;
+                    saveData();
+                    renderFolders();
+                }
                 return;
             }
-            startCycle(cycleId);
-        } else if (target.classList.contains('edit-btn')) {
-            openCycleModal(cycleId);
-        } else if (target.classList.contains('delete-btn')) {
-            if (confirm("Tem certeza que deseja excluir este ciclo?")) {
-                data.cycles = data.cycles.filter(c => c.id != cycleId);
+
+            if (!button) return;
+            const { id, type, folderId, subjectId } = itemEl.dataset;
+
+            if (button.classList.contains('add-subject-btn')) openItemModal('subject', null, { folderId: id });
+            else if (button.classList.contains('add-topic-btn')) openItemModal('topic', null, { folderId, subjectId: id });
+            else if (button.classList.contains('edit-btn')) openItemModal(type, id, { folderId, subjectId });
+            else if (button.classList.contains('delete-btn')) {
+                if (!confirm('Excluir este item e todo o seu conteúdo?')) return;
+                if (type === 'folder') data.folders = data.folders.filter(f => f.id != id);
+                else if (type === 'subject') findItemPath(folderId, 'folder').folder.subjects = findItemPath(folderId, 'folder').folder.subjects.filter(s => s.id != id);
+                else if (type === 'topic') findItemPath(subjectId, 'subject').subject.topics = findItemPath(subjectId, 'subject').subject.topics.filter(t => t.id != id);
+                renderAll(); saveData();
+            } else if (button.classList.contains('duplicate-btn')) {
+                function deepCloneWithNewIds(item, type) {
+                    const newItem = JSON.parse(JSON.stringify(item));
+                    newItem.id = getNextId(type);
+                    newItem.name += ' (Cópia)';
+                    if (newItem.subjects) newItem.subjects = newItem.subjects.map(s => deepCloneWithNewIds(s, 'subject'));
+                    if (newItem.topics) newItem.topics = newItem.topics.map(t => deepCloneWithNewIds(t, 'topic'));
+                    if (newItem.attachments) newItem.attachments.forEach(a => a.id = getNextId('attachment'));
+                    return newItem;
+                }
+                if (type === 'folder') {
+                    const newFolder = deepCloneWithNewIds(findItemPath(id, 'folder').folder, 'folder');
+                    data.folders.push(newFolder);
+                } else if (type === 'subject') {
+                    const { folder, subject } = findItemPath(id, 'subject');
+                    const newSubject = deepCloneWithNewIds(subject, 'subject');
+                    folder.subjects.push(newSubject);
+                } else if (type === 'topic') {
+                    const { subject, topic } = findItemPath(id, 'topic');
+                    const newTopic = deepCloneWithNewIds(topic, 'topic');
+                    subject.topics.push(newTopic);
+                }
+                renderAll(); saveData();
+            }
+        });
+
+        // --- LÓGICA DE ANEXOS ---
+        const directoryStatusDiv = document.getElementById('directory-status');
+        const addAttachmentBtn = document.getElementById('add-attachment-btn');
+        const attachmentSubjectSelect = document.getElementById('attachment-subject-select');
+        const attachmentTopicSelect = document.getElementById('attachment-topic-select');
+        const attachmentsListDiv = document.getElementById('attachments-list');
+        const attachmentTopicContainer = document.getElementById('attachment-topic-container');
+        const attachmentFlowStep2 = document.getElementById('attachment-flow-step2');
+        const attachmentDropZone = document.getElementById('attachment-flow-step2');
+        
+        function updateDirectoryStatus() { if (rootDirectoryHandle) { directoryStatusDiv.innerHTML = `<span>Pasta: <b>${rootDirectoryHandle.name}</b></span><button id="change-dir-btn">Trocar</button>`; addAttachmentBtn.disabled = false; addAttachmentBtn.textContent = 'Adicionar Anexo(s)'; document.getElementById('change-dir-btn').addEventListener('click', requestDirectoryPermission); } else { directoryStatusDiv.innerHTML = `<span>Nenhuma pasta configurada.</span><button id="select-dir-btn">Selecionar Pasta</button>`; addAttachmentBtn.disabled = true; addAttachmentBtn.textContent = 'Configure uma pasta'; document.getElementById('select-dir-btn').addEventListener('click', requestDirectoryPermission); } }
+        async function requestDirectoryPermission() { try { const handle = await window.showDirectoryPicker(); if ((await handle.queryPermission({ mode: 'readwrite' })) !== 'granted') if ((await handle.requestPermission({ mode: 'readwrite' })) !== 'granted') { alert("Permissão negada."); return; } rootDirectoryHandle = handle; await saveDirectoryHandle(handle); updateDirectoryStatus(); } catch (err) { console.error("Seleção cancelada:", err); } }
+        function updateAttachmentSelectors() {
+            attachmentSubjectSelect.innerHTML = '<option value="">Selecione uma Matéria...</option>';
+            data.folders.forEach(folder => {
+                folder.subjects.forEach(subject => {
+                    const option = document.createElement('option');
+                    option.value = subject.id;
+                    option.textContent = `${folder.name} / ${subject.name}`;
+                    option.dataset.folderId = folder.id;
+                    attachmentSubjectSelect.add(option);
+                });
+            });
+            attachmentSubjectSelect.dispatchEvent(new Event('change'));
+        }
+        attachmentSubjectSelect.addEventListener('change', () => {
+            const subjectId = attachmentSubjectSelect.value;
+            attachmentTopicSelect.innerHTML = '<option value="">Selecione um Assunto...</option>';
+            if (subjectId) {
+                const subject = findItemPath(subjectId, 'subject').subject;
+                subject.topics.forEach(topic => {
+                    attachmentTopicSelect.innerHTML += `<option value="${topic.id}">${topic.name}</option>`;
+                });
+                attachmentTopicContainer.style.display = 'block';
+            } else {
+                attachmentTopicContainer.style.display = 'none';
+            }
+            attachmentFlowStep2.style.display = 'none';
+        });
+        attachmentTopicSelect.addEventListener('change', async () => {
+            const topicId = attachmentTopicSelect.value;
+            if (topicId) {
+                const { folder, subject, topic } = findItemPath(topicId, 'topic');
+                document.getElementById('attachment-selection-info').innerHTML = `<h3>${folder.name} / ${subject.name} / ${topic.name}</h3>`;
+                attachmentFlowStep2.style.display = 'block';
+                await renderAttachments(folder.id, subject.id, topic.id);
+            } else {
+                attachmentFlowStep2.style.display = 'none';
+            }
+        });
+        async function handleFileUploads(files) {
+            const topicId = attachmentTopicSelect.value;
+            if (!topicId) { alert("Por favor, selecione uma matéria e um assunto primeiro."); return; }
+            try {
+                if ((await rootDirectoryHandle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
+                    if ((await rootDirectoryHandle.requestPermission({ mode: 'readwrite' })) !== 'granted') {
+                        alert("A permissão para escrever na pasta de anexos é necessária."); return;
+                    }
+                }
+            } catch (error) { console.error("Erro ao verificar/solicitar permissão:", error); alert("Não foi possível verificar a permissão da pasta."); return; }
+            const { folder, subject, topic } = findItemPath(topicId, 'topic');
+            if (!topic || !rootDirectoryHandle) return;
+            if (!topic.attachments) topic.attachments = [];
+            for (const file of files) {
+                try {
+                    try { await rootDirectoryHandle.getFileHandle(file.name); } 
+                    catch (e) {
+                        const newFileHandle = await rootDirectoryHandle.getFileHandle(file.name, { create: true });
+                        const writable = await newFileHandle.createWritable();
+                        await writable.write(file);
+                        await writable.close();
+                    }
+                    if (!topic.attachments.some(att => att.name === file.name)) {
+                        topic.attachments.push({ id: getNextId('attachment'), type: 'filesystem', name: file.name });
+                    }
+                } catch (err) { console.error(`Falha ao processar o arquivo ${file.name}:`, err); alert(`Ocorreu um erro ao salvar o arquivo ${file.name}.`); }
+            }
+            saveData();
+            await renderAttachments(folder.id, subject.id, topic.id);
+        }
+        addAttachmentBtn.addEventListener('click', async () => { try { const fileHandles = await window.showOpenFilePicker({ multiple: true }); const files = await Promise.all(fileHandles.map(handle => handle.getFile())); await handleFileUploads(files); } catch (err) { console.log("Seleção de arquivo cancelada.", err); } });
+        attachmentDropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); attachmentDropZone.classList.add('drop-zone-active'); });
+        attachmentDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); attachmentDropZone.classList.remove('drop-zone-active'); });
+        attachmentDropZone.addEventListener('drop', async (e) => { e.preventDefault(); e.stopPropagation(); attachmentDropZone.classList.remove('drop-zone-active'); const files = e.dataTransfer.files; if (files.length > 0) { await handleFileUploads(files); } });
+        
+        async function renderAttachments(folderId, subjectId, topicId) {
+            attachmentsListDiv.innerHTML = '';
+            const { topic } = findItemPath(topicId, 'topic');
+            if (!topic.attachments || topic.attachments.length === 0) { attachmentsListDiv.innerHTML = '<p>Nenhum anexo.</p>'; return; }
+            
+            const htmlPromises = topic.attachments.map(async (att) => {
+                if (att.type === 'filesystem' && rootDirectoryHandle) {
+                    try {
+                        await rootDirectoryHandle.getFileHandle(att.name);
+                        return `<div class="attachment-item">
+                                    <a href="#" class="attachment-link" data-filename="${att.name}">${att.name}</a>
+                                    <button class="delete-btn danger" data-id="${att.id}">Excluir</button>
+                                </div>`;
+                    } catch (error) { 
+                        return `<div class="attachment-item">
+                                    <a class="file-not-found" style="color:var(--danger-color); text-decoration:line-through;">${att.name} (Não encontrado)</a>
+                                    <button class="delete-btn danger" data-id="${att.id}">Excluir</button>
+                                </div>`; 
+                    }
+                }
+                return '';
+            });
+            
+            attachmentsListDiv.innerHTML = (await Promise.all(htmlPromises)).join('');
+            
+            attachmentsListDiv.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    if (confirm('Excluir referência? O arquivo físico não será apagado.')) {
+                        const { topic } = findItemPath(topicId, 'topic');
+                        topic.attachments = topic.attachments.filter(a => a.id != btn.dataset.id);
+                        saveData();
+                        await renderAttachments(folderId, subjectId, topicId);
+                    }
+                });
+            });
+        }
+
+        // --- LÓGICA DO VISUALIZADOR DE ANEXOS ---
+        const viewerModal = document.getElementById('attachment-viewer-modal');
+        const viewerTitle = document.getElementById('viewer-title');
+        const viewerBody = document.getElementById('viewer-body');
+        const viewerCloseBtn = document.getElementById('viewer-close-btn');
+        let currentObjectUrl = null;
+
+        attachmentsListDiv.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('attachment-link')) {
+                e.preventDefault();
+                const filename = e.target.dataset.filename;
+                if (!filename || !rootDirectoryHandle) return;
+
+                try {
+                    const fileHandle = await rootDirectoryHandle.getFileHandle(filename);
+                    const file = await fileHandle.getFile();
+                    if (currentObjectUrl) {
+                        URL.revokeObjectURL(currentObjectUrl);
+                    }
+                    const url = URL.createObjectURL(file);
+                    currentObjectUrl = url;
+
+                    viewerTitle.textContent = filename;
+                    viewerBody.innerHTML = '';
+
+                    if (file.type.startsWith('image/')) {
+                        viewerBody.innerHTML = `<img src="${url}" alt="${filename}">`;
+                    } else if (file.type === 'application/pdf') {
+                        viewerBody.innerHTML = `<iframe src="${url}"></iframe>`;
+                    } else if (file.type.startsWith('video/')) {
+                        viewerBody.innerHTML = `<video src="${url}" controls></video>`;
+                    } else if (file.type.startsWith('text/')) {
+                        const textContent = await file.text();
+                        const escapedText = textContent.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                        viewerBody.innerHTML = `<pre>${escapedText}</pre>`;
+                    } else {
+                        viewerBody.innerHTML = `<div style="text-align:center;">
+                                                    <p>Não é possível pré-visualizar este tipo de arquivo.</p>
+                                                    <a href="${url}" download="${filename}" class="download-link"><button>Baixar ${filename}</button></a>
+                                                </div>`;
+                    }
+                    viewerModal.style.display = 'flex';
+                } catch (error) {
+                    console.error("Erro ao abrir anexo:", error);
+                    alert("Não foi possível encontrar ou abrir o anexo.");
+                }
+            }
+        });
+
+        viewerCloseBtn.addEventListener('click', () => {
+            viewerModal.style.display = 'none';
+            viewerBody.innerHTML = '';
+            if (currentObjectUrl) {
+                URL.revokeObjectURL(currentObjectUrl);
+                currentObjectUrl = null;
+            }
+        });
+        
+        // --- CÓDIGO RESTANTE (FLASHCARDS, AGENDAMENTOS, CRONÔMETRO, GRÁFICOS, etc.) ---
+        
+        // --- LÓGICA DE FLASHCARDS ---
+        const flashcardAreasContainer = document.getElementById('flashcard-areas-container');
+        const areaForm = document.getElementById('flashcard-area-form');
+        const workspace = document.getElementById('flashcard-workspace');
+        const workspaceCanvas = document.getElementById('workspace-canvas');
+        function renderFlashcardAreas() {
+            flashcardAreasContainer.innerHTML = '';
+            data.flashcardAreas.forEach(area => {
+                const areaEl = document.createElement('div');
+                areaEl.className = 'flashcard-area-card'; areaEl.dataset.id = area.id; areaEl.style.borderTop = `5px solid ${area.color}`;
+                areaEl.innerHTML = `<div><h3>${area.name}</h3><p>${area.cards.length} cartão(s)</p></div><div class="action-buttons"><button class="edit-btn">Editar</button><button class="duplicate-btn">Duplicar</button><button class="delete-btn danger">Excluir</button></div>`;
+                areaEl.addEventListener('click', (e) => { if (!e.target.closest('button')) openWorkspace(area.id); });
+                flashcardAreasContainer.appendChild(areaEl);
+            });
+        }
+        document.getElementById('add-flashcard-area-btn').addEventListener('click', () => { areaForm.reset(); document.getElementById('flashcard-area-modal-title').innerText = 'Nova Área'; document.getElementById('flashcard-area-edit-id').value = ''; openModal('flashcard-area-modal'); });
+        areaForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('flashcard-area-name').value, color = document.getElementById('flashcard-area-color').value;
+            const editId = document.getElementById('flashcard-area-edit-id').value;
+            if (editId) Object.assign(data.flashcardAreas.find(a => a.id == editId), {name, color});
+            else data.flashcardAreas.push({ id: getNextId('flashcardArea'), name, color, cards: [] });
+            renderFlashcardAreas(); saveData(); closeModal();
+        });
+        flashcardAreasContainer.addEventListener('click', (e) => {
+            const button = e.target.closest('button'); if (!button) return;
+            const id = e.target.closest('.flashcard-area-card').dataset.id;
+            if (button.classList.contains('edit-btn')) {
+                const area = data.flashcardAreas.find(a => a.id == id);
+                document.getElementById('flashcard-area-modal-title').innerText = 'Editar Área';
+                document.getElementById('flashcard-area-edit-id').value = id;
+                document.getElementById('flashcard-area-name').value = area.name;
+                document.getElementById('flashcard-area-color').value = area.color;
+                openModal('flashcard-area-modal');
+            } else if (button.classList.contains('delete-btn')) {
+                if (confirm('Excluir área e flashcards?')) { data.flashcardAreas = data.flashcardAreas.filter(a => a.id != id); renderFlashcardAreas(); saveData(); }
+            } else if (button.classList.contains('duplicate-btn')) {
+                const newArea = JSON.parse(JSON.stringify(data.flashcardAreas.find(a => a.id == id)));
+                newArea.id = getNextId('flashcardArea'); newArea.name += ' (Cópia)';
+                newArea.cards.forEach(c => c.id = getNextId('flashcard'));
+                data.flashcardAreas.push(newArea);
+                renderFlashcardAreas(); saveData();
+            }
+        });
+        function openWorkspace(areaId) { 
+            workspace.dataset.areaId = areaId; 
+            document.getElementById('workspace-title').innerText = data.flashcardAreas.find(a => a.id == areaId).name; 
+            renderCardsInWorkspace(areaId); 
+            workspace.style.display = 'flex'; 
+        }
+        document.querySelector('.workspace-close-btn').addEventListener('click', () => { workspace.style.display = 'none'; renderFlashcardAreas(); });
+        document.getElementById('add-card-to-workspace-btn').addEventListener('click', () => { const area = data.flashcardAreas.find(a => a.id == workspace.dataset.areaId); area.cards.push({ id: getNextId('flashcard'), content: '', color: '#fffbe0', x: 20, y: 20 }); renderCardsInWorkspace(area.id); saveData(); });
+        function renderCardsInWorkspace(areaId) { workspaceCanvas.innerHTML = ''; data.flashcardAreas.find(a => a.id == areaId).cards.forEach(card => workspaceCanvas.appendChild(createFlashcardElement(card, areaId))); }
+        function createFlashcardElement(card, areaId) {
+            const cardEl = document.createElement('div'); cardEl.className = 'flashcard'; Object.assign(cardEl.style, {left: card.x+'px', top: card.y+'px', backgroundColor: card.color}); cardEl.dataset.id = card.id;
+            cardEl.innerHTML = `<div class="flashcard-header" style="display:flex; justify-content: flex-end; align-items:center; padding-bottom:5px;"><input type="color" class="flashcard-color-picker" value="${card.color}" style="margin-right:auto;"><div class="flashcard-actions"><button class="duplicate-card" title="Duplicar">❏</button><button class="delete-card" title="Excluir">×</button></div></div><textarea class="flashcard-textarea">${card.content}</textarea>`;
+            let isDragging=false,offsetX,offsetY;
+            cardEl.addEventListener('mousedown',(e)=>{if(e.target.matches('textarea,input,button'))return;isDragging=true;offsetX=e.clientX-cardEl.offsetLeft;offsetY=e.clientY-cardEl.offsetTop;cardEl.style.zIndex=10;});
+            document.addEventListener('mousemove',(e)=>{if(isDragging){cardEl.style.left=(e.clientX-offsetX)+'px';cardEl.style.top=(e.clientY-offsetY)+'px';}});
+            document.addEventListener('mouseup',()=>{if(isDragging){const c=data.flashcardAreas.find(a=>a.id==areaId).cards.find(c=>c.id==card.id);c.x=cardEl.offsetLeft;c.y=cardEl.offsetTop;isDragging=false;cardEl.style.zIndex=1;saveData();}});
+            cardEl.querySelector('.flashcard-textarea').addEventListener('input',(e)=>{data.flashcardAreas.find(a=>a.id==areaId).cards.find(c=>c.id==card.id).content=e.target.value;saveData();});
+            cardEl.querySelector('.flashcard-color-picker').addEventListener('input',(e)=>{const c=data.flashcardAreas.find(a=>a.id==areaId).cards.find(c=>c.id==card.id);c.color=e.target.value;cardEl.style.backgroundColor=e.target.value;saveData();});
+            cardEl.querySelector('.delete-card').addEventListener('click',()=>{const a=data.flashcardAreas.find(a=>a.id==areaId);a.cards=a.cards.filter(c=>c.id!=card.id);renderCardsInWorkspace(areaId);saveData();});
+            cardEl.querySelector('.duplicate-card').addEventListener('click',()=>{const a=data.flashcardAreas.find(a=>a.id==areaId);const o=a.cards.find(c=>c.id==card.id);const n=JSON.parse(JSON.stringify(o));n.id=getNextId('flashcard');n.x+=20;n.y+=20;a.cards.push(n);renderCardsInWorkspace(areaId);saveData();});
+            return cardEl;
+        }
+
+        // --- LÓGICA DE AGENDAMENTOS ---
+        const scheduleForm = document.getElementById('schedule-form');
+        function renderSchedules() {
+            document.getElementById('scheduled-activities-list').innerHTML = data.schedules.activities.sort((a,b)=>new Date(a.startTime)-new Date(b.startTime)).map(createScheduleElement).join('');
+            document.getElementById('scheduled-reviews-list').innerHTML = data.schedules.reviews.sort((a,b)=>new Date(a.startTime)-new Date(b.startTime)).map(createScheduleElement).join('');
+            document.querySelectorAll('.schedule-item .edit-btn').forEach(btn => btn.addEventListener('click', (e) => openScheduleModal(e.target.dataset.type, e.target.dataset.id)));
+            document.querySelectorAll('.schedule-item .delete-btn').forEach(btn => btn.addEventListener('click', (e) => { if (confirm('Excluir?')) { const k=e.target.dataset.type==='activity'?'activities':'reviews'; data.schedules[k]=data.schedules[k].filter(i=>i.id!=e.target.dataset.id); renderSchedules(); saveData(); }}));
+        }
+        function createScheduleElement(item) {
+            const path = findItemPath(item.topicId, 'topic');
+            return `<div class="schedule-item ${item.completed ? 'completed' : ''}">
+                        <div>
+                            <strong>${path.folder?.name||'?'}/${path.subject?.name||'?'}>${path.topic?.name||'?'}</strong>
+                            <div class="schedule-info">
+                                <span>Início: ${new Date(item.startTime).toLocaleString('pt-BR')}</span>
+                                <span>Fim: ${new Date(item.endTime).toLocaleString('pt-BR')}</span>
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="edit-btn" data-id="${item.id}" data-type="${item.type}">Editar</button>
+                            <button class="delete-btn danger" data-id="${item.id}" data-type="${item.type}">Excluir</button>
+                        </div>
+                    </div>`;
+        }
+        document.getElementById('add-schedule-btn').addEventListener('click', () => openScheduleModal('activity'));
+        document.getElementById('add-review-btn').addEventListener('click', () => openScheduleModal('review'));
+        scheduleForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('schedule-edit-id').value; const newStart = new Date(document.getElementById('start-time').value); const newEnd = new Date(document.getElementById('end-time').value);
+            if (!newStart.getTime() || !newEnd.getTime() || newEnd <= newStart) { alert("Horários inválidos."); return; }
+            const hasConflict = [...data.schedules.activities, ...data.schedules.reviews].some(event => { if (editId && event.id == editId) return false; const oldStart = new Date(event.startTime); const oldEnd = new Date(event.endTime); return (newStart < oldEnd) && (newEnd > oldStart); });
+            if (hasConflict) { alert("Conflito de horário!"); return; }
+            const subjectIdVal = document.getElementById('schedule-subject').value;
+            const topicIdVal = document.getElementById('schedule-topic').value;
+            if (!subjectIdVal || !topicIdVal) { alert("Selecione matéria e assunto."); return; }
+            const scheduleData = { 
+                subjectId: parseInt(subjectIdVal, 10), 
+                topicId: parseInt(topicIdVal, 10), 
+                startTime:document.getElementById('start-time').value, 
+                endTime:document.getElementById('end-time').value, 
+                type:document.getElementById('schedule-type').value 
+            };
+            const listKey = scheduleData.type === 'activity' ? 'activities' : 'reviews';
+            if (editId) { const index = data.schedules[listKey].findIndex(i => i.id == editId); data.schedules[listKey][index] = { ...data.schedules[listKey][index], ...scheduleData, notified: false, completed: false }; } 
+            else { data.schedules[listKey].push({ id: getNextId('schedule'), ...scheduleData, notified: false, completed: false }); }
+            renderSchedules(); saveData(); closeModal();
+        });
+        function openScheduleModal(type, id = null) {
+            scheduleForm.reset(); document.getElementById('schedule-type').value = type;
+            const subjectSelect = document.getElementById('schedule-subject'); const topicSelect = document.getElementById('schedule-topic');
+            subjectSelect.innerHTML = '<option value="">Selecione...</option>';
+            data.folders.forEach(folder => folder.subjects.forEach(subject => subjectSelect.innerHTML += `<option value="${subject.id}">${folder.name} / ${subject.name}</option>`));
+            subjectSelect.onchange = () => {
+                topicSelect.innerHTML = '<option value="">Selecione...</option>'; const subject = findItemPath(subjectSelect.value, 'subject').subject;
+                if (subject) subject.topics.forEach(t => topicSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+            };
+            if (id) {
+                const item = type === 'activity' ? data.schedules.activities.find(i => i.id == id) : data.schedules.reviews.find(i => i.id == id);
+                document.getElementById('schedule-modal-title').innerText = `Editar ${type==='activity'?'Atividade':'Revisão'}`;
+                document.getElementById('schedule-edit-id').value = id;
+                if (item.subjectId) { subjectSelect.value = item.subjectId; subjectSelect.dispatchEvent(new Event('change')); topicSelect.value = item.topicId; }
+                document.getElementById('start-time').value = item.startTime; document.getElementById('end-time').value = item.endTime;
+            } else { document.getElementById('schedule-modal-title').innerText = `Agendar ${type==='activity'?'Atividade':'Revisão'}`; document.getElementById('schedule-edit-id').value = ''; topicSelect.innerHTML = '<option value="">Selecione a matéria</option>'; }
+            openModal('schedule-modal');
+        }
+        
+        // --- LÓGICA DE LOGGING E ALARME ---
+        function logSession(subjectId, topicId, durationSeconds, type, sessionDate = new Date()) {
+            if (!durationSeconds || durationSeconds <= 0) return;
+            data.studyHistory.push({
+                id: getNextId('history'), 
+                subjectId: subjectId || null, 
+                topicId: topicId || null,
+                duration: durationSeconds, type: type, date: sessionDate.toISOString()
+            });
+            saveData();
+        }
+        function playAlarm(message) {
+            if (activeAlarmSound) return;
+            initAudioContext();
+            activeAlarmSound = playDefaultBeep();
+            if(activeAlarmSound) {
+                document.getElementById('alarm-text').textContent = message || "ALARME!";
+                document.getElementById('alarm-banner').style.display = 'flex';
+            }
+        }
+        function stopAlarmSound() {
+            stopDefaultBeep(activeAlarmSound);
+            activeAlarmSound = null;
+            document.getElementById('alarm-banner').style.display = 'none';
+        }
+        document.getElementById('stop-alarm-btn').addEventListener('click', stopAlarmSound);
+        function startAlarmSystem() {
+            if (alarmInterval) clearInterval(alarmInterval);
+            const checkSchedules = () => {
+                const now = new Date();
+                let needsSave = false;
+                let needsRender = false;
+                [...data.schedules.activities, ...data.schedules.reviews].forEach(item => {
+                    const startTime = new Date(item.startTime);
+                    const endTime = new Date(item.endTime);
+                    if (now >= startTime && !item.notified) {
+                        playAlarm(`Hora de iniciar: ${findItemPath(item.topicId, 'topic').topic?.name || 'Atividade Agendada'}`);
+                        item.notified = true;
+                        needsSave = true;
+                    }
+                    if (now >= endTime && !item.completed) {
+                        const durationSeconds = Math.round((endTime - startTime) / 1000);
+                        if (durationSeconds > 0) {
+                            const sessionType = item.type === 'activity' ? 'study_scheduled' : 'study_review';
+                            logSession(item.subjectId, item.topicId, durationSeconds, sessionType, endTime);
+                        }
+                        item.completed = true;
+                        needsSave = true;
+                        needsRender = true;
+                    }
+                });
+                if (needsSave) {
+                    saveData();
+                    if (needsRender && document.querySelector('.tab-link[data-tab="schedules"].active')) {
+                        renderSchedules();
+                    }
+                }
+            };
+            checkSchedules();
+            alarmInterval = setInterval(checkSchedules, 30000);
+        }
+        
+        // --- LÓGICA DO CRONÔMETRO E CICLOS ---
+        const timerSubjectSelect = document.getElementById('timer-subject-select');
+        const timerTopicSelect = document.getElementById('timer-topic-select');
+        const timerDisplay = document.getElementById('timer-display');
+        const startTimerBtn = document.getElementById('start-timer-btn');
+        const pauseTimerBtn = document.getElementById('pause-timer-btn');
+        const resetTimerBtn = document.getElementById('reset-timer-btn');
+        const cycleStatusBanner = document.getElementById('cycle-status-banner');
+
+        function populateTimerSelectors(subjectSelect, topicSelect) {
+            subjectSelect.innerHTML = '<option value="">Selecione a Matéria...</option>';
+            data.folders.forEach(folder => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = folder.name;
+                folder.subjects.forEach(subject => {
+                    optgroup.innerHTML += `<option value="${subject.id}">${subject.name}</option>`;
+                });
+                subjectSelect.appendChild(optgroup);
+            });
+            subjectSelect.onchange = () => {
+                topicSelect.innerHTML = '<option value="">Selecione o Assunto...</option>';
+                if (subjectSelect.value) {
+                    const subject = findItemPath(subjectSelect.value, 'subject').subject;
+                    if (subject) subject.topics.forEach(t => topicSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+                }
+            };
+            subjectSelect.dispatchEvent(new Event('change'));
+        }
+
+        function updateTimerDisplay(seconds) {
+            const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+            const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+            const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+            timerDisplay.textContent = `${h}:${m}:${s}`;
+            document.title = `${h}:${m}:${s} - Foco`;
+        }
+
+        function updateTimerButtons() {
+            startTimerBtn.disabled = timerState === 'running' || isCycleRunning;
+            pauseTimerBtn.disabled = timerState !== 'running' || isCycleRunning;
+            resetTimerBtn.disabled = timerState === 'stopped';
+            document.getElementById('timer-subject-select').disabled = timerState !== 'stopped';
+            document.getElementById('timer-topic-select').disabled = timerState !== 'stopped';
+            document.getElementById('timer-duration').disabled = timerState !== 'stopped';
+            document.getElementById('timer-rest-duration').disabled = timerState !== 'stopped';
+        }
+
+        function startTimer(durationInSeconds = null) {
+            if(timerState === 'running') return;
+
+            if (timerState === 'stopped') {
+                if (durationInSeconds !== null) {
+                    initialDuration = durationInSeconds;
+                } else {
+                    const durationInput = document.getElementById('timer-duration');
+                    initialDuration = (parseInt(durationInput.value) || 0) * 60;
+                }
+                
+                if(initialDuration <= 0) { alert("Por favor, insira uma duração válida."); return; }
+                timeLeft = initialDuration;
+                
+                if (currentTimerType === 'study' && !isCycleRunning && !timerSubjectSelect.value) {
+                    alert("Por favor, selecione uma matéria para a sessão de estudo."); return;
+                }
+            }
+            
+            timerState = 'running';
+            updateTimerButtons();
+            timerDisplay.classList.toggle('active-rest', currentTimerType === 'rest');
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay(timeLeft);
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    document.title = "Organizador de Estudos";
+                    
+                    if (isCycleRunning) {
+                        if (currentTimerType === 'study_cycle') {
+                            const cycle = data.cycles.find(c => c.id == currentCycleId);
+                            const step = cycle.steps[currentCycleStepIndex];
+                            logSession(step.subjectId, step.topicId, initialDuration, 'study_cycle');
+                            playAlarm(`Etapa de estudo concluída!`);
+                        } else { 
+                            logSession(null, null, initialDuration, 'rest');
+                            playAlarm(`Descanso concluído!`);
+                        }
+                        runNextCycleStep();
+                    } else {
+                        if (currentTimerType === 'study') {
+                            const subjectId = timerSubjectSelect.value ? parseInt(timerSubjectSelect.value, 10) : null;
+                            const topicId = timerTopicSelect.value ? parseInt(timerTopicSelect.value, 10) : null;
+                            logSession(subjectId, topicId, initialDuration, 'study_timer');
+                            playAlarm("Sessão de estudo finalizada! Iniciando descanso.");
+                            const restMinutes = parseInt(document.getElementById('timer-rest-duration').value, 10);
+                            if (restMinutes > 0) {
+                                currentTimerType = 'rest';
+                                timerState = 'stopped';
+                                startTimer(restMinutes * 60);
+                            } else {
+                                resetTimer();
+                            }
+                        } else { 
+                            logSession(null, null, initialDuration, 'rest');
+                            playAlarm("Descanso finalizado!");
+                            resetTimer();
+                        }
+                    }
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            if(timerState !== 'running') return;
+            clearInterval(timerInterval);
+            timerState = 'paused';
+            updateTimerButtons();
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            if (isCycleRunning) stopCycle();
+            timerState = 'stopped';
+            currentTimerType = 'study';
+            timeLeft = 0;
+            initialDuration = 0;
+            updateTimerDisplay(0);
+            updateTimerButtons();
+            timerDisplay.classList.remove('active-rest');
+            document.title = "Organizador de Estudos";
+        }
+        
+        startTimerBtn.addEventListener('click', () => startTimer());
+        pauseTimerBtn.addEventListener('click', pauseTimer);
+        resetTimerBtn.addEventListener('click', resetTimer);
+
+        // --- LÓGICA DOS CICLOS ---
+        const cyclesContainer = document.getElementById('cycles-container');
+        const cycleModal = document.getElementById('cycle-modal');
+        const cycleForm = document.getElementById('cycle-form');
+        const addCycleBtn = document.getElementById('add-cycle-btn');
+
+        function renderCycles() {
+            cyclesContainer.innerHTML = '';
+            data.cycles.forEach(cycle => {
+                const card = document.createElement('div');
+                card.className = 'cycle-card';
+                card.style.borderColor = cycle.color;
+                card.innerHTML = `
+                    <div class="cycle-card-header">
+                        <h4>${cycle.name}</h4>
+                        <div style="width: 20px; height: 20px; border-radius: 4px; flex-shrink: 0; border: 1px solid #ccc; background-color: ${cycle.color};"></div>
+                    </div>
+                    <p>${cycle.steps.length} etapas, ${cycle.repetitions}x</p>
+                    <div class="action-buttons">
+                        <button class="edit-btn" data-id="${cycle.id}">Editar</button>
+                        <button class="duplicate-btn" data-id="${cycle.id}">Duplicar</button>
+                        <button class="delete-btn danger" data-id="${cycle.id}">Excluir</button>
+                    </div>
+                    <button class="start-cycle-btn" data-id="${cycle.id}">Iniciar Ciclo</button>
+                `;
+                cyclesContainer.appendChild(card);
+            });
+        }
+
+        addCycleBtn.addEventListener('click', () => openCycleModal());
+
+        cyclesContainer.addEventListener('click', e => {
+            const target = e.target;
+            const cycleId = target.dataset.id;
+            if (!cycleId) return;
+
+            if (target.classList.contains('start-cycle-btn')) {
+                if (timerState !== 'stopped') {
+                    alert("Por favor, pare o cronômetro atual antes de iniciar um ciclo.");
+                    return;
+                }
+                startCycle(cycleId);
+            } else if (target.classList.contains('edit-btn')) {
+                openCycleModal(cycleId);
+            } else if (target.classList.contains('delete-btn')) {
+                if (confirm("Tem certeza que deseja excluir este ciclo?")) {
+                    data.cycles = data.cycles.filter(c => c.id != cycleId);
+                    saveData();
+                    renderCycles();
+                }
+            } else if (target.classList.contains('duplicate-btn')) {
+                const original = data.cycles.find(c => c.id == cycleId);
+                const newCycle = JSON.parse(JSON.stringify(original));
+                newCycle.id = getNextId('cycle');
+                newCycle.name += " (Cópia)";
+                data.cycles.push(newCycle);
                 saveData();
                 renderCycles();
             }
-        } else if (target.classList.contains('duplicate-btn')) {
-            const original = data.cycles.find(c => c.id == cycleId);
-            const newCycle = JSON.parse(JSON.stringify(original));
-            newCycle.id = getNextId('cycle');
-            newCycle.name += " (Cópia)";
-            data.cycles.push(newCycle);
-            saveData();
-            renderCycles();
-        }
-    });
+        });
 
-    function createCycleStepElement(step = {}) {
-        const stepDiv = document.createElement('div');
-        stepDiv.className = 'cycle-materia-item';
-        const subjectSelectId = `cycle-subject-${getNextId('cycleItem')}`;
-        const topicSelectId = `cycle-topic-${getNextId('cycleItem')}`;
-        stepDiv.innerHTML = `
-            <div>
-                <div class="form-group">
-                    <label for="${subjectSelectId}">Matéria</label>
-                    <select id="${subjectSelectId}" class="cycle-subject-select"></select>
+        function createCycleStepElement(step = {}) {
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'cycle-materia-item';
+            const subjectSelectId = `cycle-subject-${getNextId('cycleItem')}`;
+            const topicSelectId = `cycle-topic-${getNextId('cycleItem')}`;
+            stepDiv.innerHTML = `
+                <div>
+                    <div class="form-group">
+                        <label for="${subjectSelectId}">Matéria</label>
+                        <select id="${subjectSelectId}" class="cycle-subject-select"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="${topicSelectId}">Assunto</label>
+                        <select id="${topicSelectId}" class="cycle-topic-select"></select>
+                    </div>
+                    <div class="flex-group">
+                        <div class="form-group"><label>Estudo (min)</label><input type="number" class="cycle-study-duration" value="${step.studyDuration || 25}" min="1"></div>
+                        <div class="form-group"><label>Descanso (min)</label><input type="number" class="cycle-rest-duration" value="${step.restDuration || 5}" min="0"></div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="${topicSelectId}">Assunto</label>
-                    <select id="${topicSelectId}" class="cycle-topic-select"></select>
-                </div>
-                <div class="flex-group">
-                    <div class="form-group"><label>Estudo (min)</label><input type="number" class="cycle-study-duration" value="${step.studyDuration || 25}" min="1"></div>
-                    <div class="form-group"><label>Descanso (min)</label><input type="number" class="cycle-rest-duration" value="${step.restDuration || 5}" min="0"></div>
-                </div>
-            </div>
-            <button type="button" class="remove-step-btn danger">X</button>
-        `;
-        const subjectSelect = stepDiv.querySelector('.cycle-subject-select');
-        const topicSelect = stepDiv.querySelector('.cycle-topic-select');
-        populateTimerSelectors(subjectSelect, topicSelect);
-        if (step.subjectId) {
-            subjectSelect.value = step.subjectId;
-            subjectSelect.dispatchEvent(new Event('change'));
-            if(step.topicId) topicSelect.value = step.topicId;
+                <button type="button" class="remove-step-btn danger">X</button>
+            `;
+            const subjectSelect = stepDiv.querySelector('.cycle-subject-select');
+            const topicSelect = stepDiv.querySelector('.cycle-topic-select');
+            populateTimerSelectors(subjectSelect, topicSelect);
+            if (step.subjectId) {
+                subjectSelect.value = step.subjectId;
+                subjectSelect.dispatchEvent(new Event('change'));
+                if(step.topicId) topicSelect.value = step.topicId;
+            }
+            return stepDiv;
         }
-        return stepDiv;
-    }
 
-    function openCycleModal(cycleId = null) {
-        cycleForm.reset();
-        document.getElementById('cycle-materias-list').innerHTML = '';
-        if (cycleId) {
-            const cycle = data.cycles.find(c => c.id == cycleId);
-            document.getElementById('cycle-modal-title').textContent = "Editar Ciclo de Estudos";
-            document.getElementById('cycle-edit-id').value = cycle.id;
-            document.getElementById('cycle-name').value = cycle.name;
-            document.getElementById('cycle-color').value = cycle.color;
-            document.getElementById('cycle-repetitions').value = cycle.repetitions;
-            cycle.steps.forEach(step => {
-                document.getElementById('cycle-materias-list').appendChild(createCycleStepElement(step));
-            });
-        } else {
-            document.getElementById('cycle-modal-title').textContent = "Novo Ciclo de Estudos";
-            document.getElementById('cycle-edit-id').value = '';
-            document.getElementById('cycle-materias-list').appendChild(createCycleStepElement());
-        }
-        openModal('cycle-modal');
-    }
-
-    document.getElementById('add-materia-to-cycle-btn').addEventListener('click', () => {
-        document.getElementById('cycle-materias-list').appendChild(createCycleStepElement());
-    });
-    
-    document.getElementById('cycle-materias-list').addEventListener('click', e => {
-        if (e.target.classList.contains('remove-step-btn')) {
-            e.target.closest('.cycle-materia-item').remove();
-        }
-    });
-
-    cycleForm.addEventListener('submit', e => {
-        e.preventDefault();
-        const steps = [];
-        document.querySelectorAll('.cycle-materia-item').forEach(item => {
-            const subjectId = item.querySelector('.cycle-subject-select').value;
-            const topicId = item.querySelector('.cycle-topic-select').value;
-            const studyDuration = parseInt(item.querySelector('.cycle-study-duration').value);
-            const restDuration = parseInt(item.querySelector('.cycle-rest-duration').value);
-            if (subjectId && studyDuration > 0) {
-                steps.push({ 
-                    subjectId: parseInt(subjectId, 10), 
-                    topicId: topicId ? parseInt(topicId, 10) : null,
-                    studyDuration, 
-                    restDuration 
+        function openCycleModal(cycleId = null) {
+            cycleForm.reset();
+            document.getElementById('cycle-materias-list').innerHTML = '';
+            if (cycleId) {
+                const cycle = data.cycles.find(c => c.id == cycleId);
+                document.getElementById('cycle-modal-title').textContent = "Editar Ciclo de Estudos";
+                document.getElementById('cycle-edit-id').value = cycle.id;
+                document.getElementById('cycle-name').value = cycle.name;
+                document.getElementById('cycle-color').value = cycle.color;
+                document.getElementById('cycle-repetitions').value = cycle.repetitions;
+                cycle.steps.forEach(step => {
+                    document.getElementById('cycle-materias-list').appendChild(createCycleStepElement(step));
                 });
+            } else {
+                document.getElementById('cycle-modal-title').textContent = "Novo Ciclo de Estudos";
+                document.getElementById('cycle-edit-id').value = '';
+                document.getElementById('cycle-materias-list').appendChild(createCycleStepElement());
+            }
+            openModal('cycle-modal');
+        }
+
+        document.getElementById('add-materia-to-cycle-btn').addEventListener('click', () => {
+            document.getElementById('cycle-materias-list').appendChild(createCycleStepElement());
+        });
+        
+        document.getElementById('cycle-materias-list').addEventListener('click', e => {
+            if (e.target.classList.contains('remove-step-btn')) {
+                e.target.closest('.cycle-materia-item').remove();
             }
         });
 
-        if (steps.length === 0) {
-            alert("Adicione pelo menos uma etapa de estudo válida ao ciclo.");
-            return;
-        }
-        
-        const cycleData = {
-            name: document.getElementById('cycle-name').value,
-            color: document.getElementById('cycle-color').value,
-            repetitions: parseInt(document.getElementById('cycle-repetitions').value),
-            steps: steps
-        };
+        cycleForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const steps = [];
+            document.querySelectorAll('.cycle-materia-item').forEach(item => {
+                const subjectId = item.querySelector('.cycle-subject-select').value;
+                const topicId = item.querySelector('.cycle-topic-select').value;
+                const studyDuration = parseInt(item.querySelector('.cycle-study-duration').value);
+                const restDuration = parseInt(item.querySelector('.cycle-rest-duration').value);
+                if (subjectId && studyDuration > 0) {
+                    steps.push({ 
+                        subjectId: parseInt(subjectId, 10), 
+                        topicId: topicId ? parseInt(topicId, 10) : null,
+                        studyDuration, 
+                        restDuration 
+                    });
+                }
+            });
 
-        const editId = document.getElementById('cycle-edit-id').value;
-        if (editId) {
-            const index = data.cycles.findIndex(c => c.id == editId);
-            data.cycles[index] = { ...data.cycles[index], ...cycleData };
-        } else {
-            cycleData.id = getNextId('cycle');
-            data.cycles.push(cycleData);
-        }
-        saveData();
-        renderCycles();
-        closeModal();
-    });
-
-    function startCycle(cycleId) {
-        isCycleRunning = true;
-        currentCycleId = cycleId;
-        currentCycleRep = 1;
-        currentCycleStepIndex = -1; 
-        document.getElementById('cronometro-tab').querySelectorAll('input, select, button').forEach(el => el.disabled = true);
-        resetTimerBtn.disabled = false;
-        runNextCycleStep();
-    }
-    
-    function stopCycle() {
-        isCycleRunning = false;
-        cycleStatusBanner.style.display = 'none';
-        document.getElementById('cronometro-tab').querySelectorAll('input, select, button').forEach(el => el.disabled = false);
-        updateTimerButtons();
-    }
-
-    function runNextCycleStep() {
-        const cycle = data.cycles.find(c => c.id == currentCycleId);
-        
-        if (currentTimerType === 'study_cycle') {
-            const step = cycle.steps[currentCycleStepIndex];
-            if (step.restDuration > 0) {
-                 currentTimerType = 'rest';
-                 timerState = 'stopped';
-                 const restSeconds = step.restDuration * 60;
-                 cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
-                 startTimer(restSeconds);
-                 return;
-            }
-        }
-        
-        currentCycleStepIndex++;
-        if (currentCycleStepIndex >= cycle.steps.length) {
-            currentCycleRep++;
-            if (currentCycleRep > cycle.repetitions) {
-                playAlarm("Ciclo de estudos concluído!");
-                resetTimer();
+            if (steps.length === 0) {
+                alert("Adicione pelo menos uma etapa de estudo válida ao ciclo.");
                 return;
             }
-            currentCycleStepIndex = 0;
-        }
+            
+            const cycleData = {
+                name: document.getElementById('cycle-name').value,
+                color: document.getElementById('cycle-color').value,
+                repetitions: parseInt(document.getElementById('cycle-repetitions').value),
+                steps: steps
+            };
 
-        const nextStep = cycle.steps[currentCycleStepIndex];
-        currentTimerType = 'study_cycle';
-        timerState = 'stopped';
-        const studySeconds = nextStep.studyDuration * 60;
-        const subjectInfo = findItemInfo(nextStep.subjectId, 'subject');
-        cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Rep. ${currentCycleRep}/${cycle.repetitions} | Etapa ${currentCycleStepIndex + 1}/${cycle.steps.length}: ${subjectInfo.name}`;
-        cycleStatusBanner.style.display = 'block';
-        startTimer(studySeconds);
-    }
-    
-    // --- LÓGICA DOS GRÁFICOS ---
-    const chartTypeSelect = document.getElementById('chart-type-select');
-    const chartDataSelect = document.getElementById('chart-data-select');
-    
-    function findItemInfo(id, type) {
-        const numericId = parseInt(id, 10);
-        for (const folder of data.folders) {
-            for (const subject of folder.subjects) {
-                if (type === 'subject' && subject.id === numericId) return { name: subject.name, color: subject.color };
-                for (const topic of subject.topics) {
-                    if (type === 'topic' && topic.id === numericId) return { name: topic.name, color: topic.color };
-                }
+            const editId = document.getElementById('cycle-edit-id').value;
+            if (editId) {
+                const index = data.cycles.findIndex(c => c.id == editId);
+                data.cycles[index] = { ...data.cycles[index], ...cycleData };
+            } else {
+                cycleData.id = getNextId('cycle');
+                data.cycles.push(cycleData);
             }
-        }
-        return { name: 'Item Excluído', color: '#cccccc' };
-    }
-
-    function renderChart() {
-        if (currentChart) {
-            currentChart.destroy();
-        }
-        const container = document.getElementById('chart-container');
-        if (!data.studyHistory || data.studyHistory.length === 0) {
-            container.innerHTML = "<p style='text-align:center; padding: 40px;'>Sem dados de estudo para exibir. Conclua algumas atividades para começar!</p>";
-            return;
-        }
-        container.innerHTML = '<canvas id="study-chart"></canvas>';
-        const ctx = document.getElementById('study-chart').getContext('2d');
-
-        const chartType = chartTypeSelect.value;
-        const dataType = chartDataSelect.value;
-        let chartConfig = {};
-
-        const vars = {
-            accentColor: getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim(),
-            successColor: getComputedStyle(document.documentElement).getPropertyValue('--success-color').trim(),
-        };
-
-        const existingSubjectIds = new Set();
-        data.folders.forEach(f => f.subjects.forEach(s => existingSubjectIds.add(s.id)));
-
-        const existingTopicIds = new Set();
-        data.folders.forEach(f => f.subjects.forEach(s => s.topics.forEach(t => existingTopicIds.add(t.id))));
-
-        const validHistory = data.studyHistory.filter(h => {
-            if (h.type === 'rest') return true;
-            if (h.type.startsWith('study')) {
-                if (h.topicId) return existingTopicIds.has(h.topicId);
-                if (h.subjectId) return existingSubjectIds.has(h.subjectId);
-                return false;
-            }
-            return false;
+            saveData();
+            renderCycles();
+            closeModal();
         });
 
-        if (dataType === 'rest') {
-            const contextualHistory = [];
-            for (let i = 0; i < validHistory.length; i++) {
-                const entry = validHistory[i];
-                if (entry.type.startsWith('study')) {
-                    contextualHistory.push(entry);
-                } else if (entry.type === 'rest') {
-                    if (i > 0 && validHistory[i-1].type.startsWith('study')) {
-                        contextualHistory.push(entry);
-                    }
+        function startCycle(cycleId) {
+            isCycleRunning = true;
+            currentCycleId = cycleId;
+            currentCycleRep = 1;
+            currentCycleStepIndex = -1; 
+            document.getElementById('cronometro-tab').querySelectorAll('input, select, button').forEach(el => el.disabled = true);
+            resetTimerBtn.disabled = false;
+            runNextCycleStep();
+        }
+        
+        function stopCycle() {
+            isCycleRunning = false;
+            cycleStatusBanner.style.display = 'none';
+            document.getElementById('cronometro-tab').querySelectorAll('input, select, button').forEach(el => el.disabled = false);
+            updateTimerButtons();
+        }
+
+        function runNextCycleStep() {
+            const cycle = data.cycles.find(c => c.id == currentCycleId);
+            
+            if (currentTimerType === 'study_cycle') {
+                const step = cycle.steps[currentCycleStepIndex];
+                if (step.restDuration > 0) {
+                       currentTimerType = 'rest';
+                       timerState = 'stopped';
+                       const restSeconds = step.restDuration * 60;
+                       cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
+                       startTimer(restSeconds);
+                       return;
                 }
             }
             
-            const totals = contextualHistory.reduce((acc, h) => {
-                if (h.type.startsWith('study')) acc.study += h.duration;
-                else if (h.type === 'rest') acc.rest += h.duration;
-                return acc;
-            }, { study: 0, rest: 0 });
-
-            if (chartType === 'line') {
-                const dailyTotals = contextualHistory.reduce((acc, h) => {
-                     const day = h.date.split('T')[0];
-                     if (!acc[day]) acc[day] = { study: 0, rest: 0 };
-                     if (h.type.startsWith('study')) acc[day].study += h.duration;
-                     else if (h.type === 'rest') acc[day].rest += h.duration;
-                     return acc;
-                }, {});
-                const sortedDays = Object.keys(dailyTotals).sort();
-                chartConfig = { type: 'line', data: { labels: sortedDays, datasets: [ { label: 'Estudo (minutos)', data: sortedDays.map(day => (dailyTotals[day].study / 60).toFixed(2)), borderColor: vars.accentColor, tension: 0.1, fill: false }, { label: 'Descanso (minutos)', data: sortedDays.map(day => (dailyTotals[day].rest / 60).toFixed(2)), borderColor: vars.successColor, tension: 0.1, fill: false } ] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Evolução de Estudo vs. Descanso por Dia' } }, scales: { x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy' } }, y: { beginAtZero: true, title: { display: true, text: 'Minutos' } } } } };
-            } else {
-                const labels = ['Tempo de Estudo', 'Tempo de Descanso'];
-                const durations = [totals.study / 60, totals.rest / 60];
-                const colors = [vars.accentColor, vars.successColor];
-                if (chartType === 'pie') {
-                    chartConfig = { type: 'pie', data: { labels, datasets: [{ data: durations, backgroundColor: colors }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Proporção de Estudo vs. Descanso (minutos)' } } } };
-                } else { 
-                    chartConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Minutos', data: durations, backgroundColor: colors }] }, options: { maintainAspectRatio: false, responsive: true, indexAxis: 'y', plugins: { legend: {display: false}, title: { display: true, text: 'Comparativo de Estudo vs. Descanso (minutos)' } } } };
+            currentCycleStepIndex++;
+            if (currentCycleStepIndex >= cycle.steps.length) {
+                currentCycleRep++;
+                if (currentCycleRep > cycle.repetitions) {
+                    playAlarm("Ciclo de estudos concluído!");
+                    resetTimer();
+                    return;
                 }
-            }
-        } else { // subject or topic
-            const key = dataType === 'subject' ? 'subjectId' : 'topicId';
-            const validStudyHistory = validHistory.filter(h => h.type.startsWith('study'));
-
-            if (validStudyHistory.length === 0) {
-                 container.innerHTML = `<p style='text-align:center; padding: 40px;'>Sem dados de estudo para a análise de '${dataType === 'subject' ? 'Matérias' : 'Assuntos'}'.</p>`;
-                 return;
+                currentCycleStepIndex = 0;
             }
 
-            if (chartType === 'line') {
-                 const dailyTotals = validStudyHistory.reduce((acc, h) => {
-                     const day = h.date.split('T')[0];
-                     if (!acc[day]) acc[day] = 0;
-                     acc[day] += h.duration;
-                     return acc;
-                 }, {});
-                 const sortedDays = Object.keys(dailyTotals).sort();
-                 chartConfig = { type: 'line', data: { labels: sortedDays, datasets: [{ label: 'Total de Estudo (minutos)', data: sortedDays.map(day => (dailyTotals[day] / 60).toFixed(2)), borderColor: vars.accentColor, tension: 0.1 }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Evolução Total de Estudo por Dia' } }, scales: { x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy' } }, y: { beginAtZero: true, title: { display: true, text: 'Minutos' } } } } };
-            } else { 
-                const aggregated = validStudyHistory.reduce((acc, h) => {
-                    if (!acc[h[key]]) acc[h[key]] = 0;
-                    acc[h[key]] += h.duration;
-                    return acc;
-                }, {});
-
-                const sorted = Object.entries(aggregated).sort((a, b) => b[1] - a[1]);
-                const labels = sorted.map(entry => findItemInfo(entry[0], dataType).name);
-                const durations = sorted.map(entry => (entry[1] / 60).toFixed(2));
-                const colors = sorted.map(entry => findItemInfo(entry[0], dataType).color);
-
-                if (chartType === 'pie') {
-                    chartConfig = { type: 'pie', data: { labels, datasets: [{ data: durations, backgroundColor: colors }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: `Proporção por ${dataType === 'subject' ? 'Matéria' : 'Assunto'} (minutos)` } } } };
-                } else {
-                    chartConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Minutos', data: durations, backgroundColor: colors }] }, options: { maintainAspectRatio: false, responsive: true, indexAxis: 'y', plugins: { legend: {display: false}, title: { display: true, text: `Ranking por ${dataType === 'subject' ? 'Matéria' : 'Assunto'} (minutos)` } } } };
-                }
-            }
+            const nextStep = cycle.steps[currentCycleStepIndex];
+            currentTimerType = 'study_cycle';
+            timerState = 'stopped';
+            const studySeconds = nextStep.studyDuration * 60;
+            const { subject } = findItemPath(nextStep.subjectId, 'subject');
+            cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Rep. ${currentCycleRep}/${cycle.repetitions} | Etapa ${currentCycleStepIndex + 1}/${cycle.steps.length}: ${subject.name}`;
+            cycleStatusBanner.style.display = 'block';
+            startTimer(studySeconds);
         }
-        currentChart = new Chart(ctx, chartConfig);
-    }
-    
-    chartTypeSelect.addEventListener('change', renderChart);
-    chartDataSelect.addEventListener('change', renderChart);
-    document.getElementById('refresh-chart-btn').addEventListener('click', renderChart);
-    
-    // --- CONFIGURAÇÕES ---
-    document.getElementById('settings-button').addEventListener('click', () => openModal('settings-modal'));
-    document.getElementById('export-data-btn').addEventListener('click', () => { const dataStr = JSON.stringify(data); const blob = new Blob([dataStr], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_estudos_${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); });
-    document.getElementById('import-file-input').addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file || !confirm("ATENÇÃO: Importar substituirá TODOS os dados atuais. Continuar?")) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const importedData = JSON.parse(event.target.result);
-                if (importedData?.folders && importedData?.nextIds) { data = importedData; saveData(); alert("Dados importados! A página será recarregada."); location.reload(); } 
-                else { alert("Erro: Arquivo de backup inválido."); }
-            } catch (err) { alert("Erro ao processar o arquivo."); }
-        };
-        reader.readAsText(file); e.target.value = '';
+        
+        // --- LÓGICA DOS GRÁFICOS ---
+        const chartTypeSelect = document.getElementById('chart-type-select');
+        const chartDataSelect = document.getElementById('chart-data-select');
+        
+        function findItemInfo(id, type) {
+            const numericId = parseInt(id, 10);
+            for (const folder of data.folders) {
+                for (const subject of folder.subjects) {
+                    if (type === 'subject' && subject.id === numericId) return { name: subject.name, color: subject.color };
+                    for (const topic of subject.topics) {
+                        if (type === 'topic' && topic.id === numericId) return { name: topic.name, color: topic.color };
+                    }
+                }
+            }
+            return { name: 'Item Excluído', color: '#cccccc' };
+        }
+
+        function renderChart() {
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            const container = document.getElementById('chart-container');
+            if (!data.studyHistory || data.studyHistory.length === 0) {
+                container.innerHTML = "<p style='text-align:center; padding: 40px;'>Sem dados de estudo para exibir. Conclua algumas atividades para começar!</p>";
+                return;
+            }
+            container.innerHTML = '<canvas id="study-chart"></canvas>';
+            const ctx = document.getElementById('study-chart').getContext('2d');
+
+            const chartType = chartTypeSelect.value;
+            const dataType = chartDataSelect.value;
+            let chartConfig = {};
+
+            const vars = {
+                accentColor: getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim(),
+                successColor: getComputedStyle(document.documentElement).getPropertyValue('--success-color').trim(),
+            };
+
+            const existingSubjectIds = new Set();
+            data.folders.forEach(f => f.subjects.forEach(s => existingSubjectIds.add(s.id)));
+
+            const existingTopicIds = new Set();
+            data.folders.forEach(f => f.subjects.forEach(s => s.topics.forEach(t => existingTopicIds.add(t.id))));
+
+            const validHistory = data.studyHistory.filter(h => {
+                if (h.type === 'rest') return true;
+                if (h.type.startsWith('study')) {
+                    if (h.topicId) return existingTopicIds.has(h.topicId);
+                    if (h.subjectId) return existingSubjectIds.has(h.subjectId);
+                    return false;
+                }
+                return false;
+            });
+
+            if (dataType === 'rest') {
+                const contextualHistory = [];
+                for (let i = 0; i < validHistory.length; i++) {
+                    const entry = validHistory[i];
+                    if (entry.type.startsWith('study')) {
+                        contextualHistory.push(entry);
+                    } else if (entry.type === 'rest') {
+                        if (i > 0 && validHistory[i-1].type.startsWith('study')) {
+                            contextualHistory.push(entry);
+                        }
+                    }
+                }
+                
+                const totals = contextualHistory.reduce((acc, h) => {
+                    if (h.type.startsWith('study')) acc.study += h.duration;
+                    else if (h.type === 'rest') acc.rest += h.duration;
+                    return acc;
+                }, { study: 0, rest: 0 });
+
+                if (chartType === 'line') {
+                    const dailyTotals = contextualHistory.reduce((acc, h) => {
+                          const day = h.date.split('T')[0];
+                          if (!acc[day]) acc[day] = { study: 0, rest: 0 };
+                          if (h.type.startsWith('study')) acc[day].study += h.duration;
+                          else if (h.type === 'rest') acc[day].rest += h.duration;
+                          return acc;
+                    }, {});
+                    const sortedDays = Object.keys(dailyTotals).sort();
+                    chartConfig = { type: 'line', data: { labels: sortedDays, datasets: [ { label: 'Estudo (minutos)', data: sortedDays.map(day => (dailyTotals[day].study / 60).toFixed(2)), borderColor: vars.accentColor, tension: 0.1, fill: false }, { label: 'Descanso (minutos)', data: sortedDays.map(day => (dailyTotals[day].rest / 60).toFixed(2)), borderColor: vars.successColor, tension: 0.1, fill: false } ] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Evolução de Estudo vs. Descanso por Dia' } }, scales: { x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy' } }, y: { beginAtZero: true, title: { display: true, text: 'Minutos' } } } } };
+                } else {
+                    const labels = ['Tempo de Estudo', 'Tempo de Descanso'];
+                    const durations = [totals.study / 60, totals.rest / 60];
+                    const colors = [vars.accentColor, vars.successColor];
+                    if (chartType === 'pie') {
+                        chartConfig = { type: 'pie', data: { labels, datasets: [{ data: durations, backgroundColor: colors }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Proporção de Estudo vs. Descanso (minutos)' } } } };
+                    } else { 
+                        chartConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Minutos', data: durations, backgroundColor: colors }] }, options: { maintainAspectRatio: false, responsive: true, indexAxis: 'y', plugins: { legend: {display: false}, title: { display: true, text: 'Comparativo de Estudo vs. Descanso (minutos)' } } } };
+                    }
+                }
+            } else { // subject or topic
+                const key = dataType === 'subject' ? 'subjectId' : 'topicId';
+                const validStudyHistory = validHistory.filter(h => h.type.startsWith('study'));
+
+                if (validStudyHistory.length === 0) {
+                     container.innerHTML = `<p style='text-align:center; padding: 40px;'>Sem dados de estudo para a análise de '${dataType === 'subject' ? 'Matérias' : 'Assuntos'}'.</p>`;
+                     return;
+                }
+
+                if (chartType === 'line') {
+                      const dailyTotals = validStudyHistory.reduce((acc, h) => {
+                          const day = h.date.split('T')[0];
+                          if (!acc[day]) acc[day] = 0;
+                          acc[day] += h.duration;
+                          return acc;
+                      }, {});
+                      const sortedDays = Object.keys(dailyTotals).sort();
+                      chartConfig = { type: 'line', data: { labels: sortedDays, datasets: [{ label: 'Total de Estudo (minutos)', data: sortedDays.map(day => (dailyTotals[day] / 60).toFixed(2)), borderColor: vars.accentColor, tension: 0.1 }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Evolução Total de Estudo por Dia' } }, scales: { x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy' } }, y: { beginAtZero: true, title: { display: true, text: 'Minutos' } } } } };
+                } else { 
+                    const aggregated = validStudyHistory.reduce((acc, h) => {
+                        if (!acc[h[key]]) acc[h[key]] = 0;
+                        acc[h[key]] += h.duration;
+                        return acc;
+                    }, {});
+
+                    const sorted = Object.entries(aggregated).sort((a, b) => b[1] - a[1]);
+                    const labels = sorted.map(entry => findItemInfo(entry[0], dataType).name);
+                    const durations = sorted.map(entry => (entry[1] / 60).toFixed(2));
+                    const colors = sorted.map(entry => findItemInfo(entry[0], dataType).color);
+
+                    if (chartType === 'pie') {
+                        chartConfig = { type: 'pie', data: { labels, datasets: [{ data: durations, backgroundColor: colors }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: `Proporção por ${dataType === 'subject' ? 'Matéria' : 'Assunto'} (minutos)` } } } };
+                    } else {
+                        chartConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Minutos', data: durations, backgroundColor: colors }] }, options: { maintainAspectRatio: false, responsive: true, indexAxis: 'y', plugins: { legend: {display: false}, title: { display: true, text: `Ranking por ${dataType === 'subject' ? 'Matéria' : 'Assunto'} (minutos)` } } } };
+                    }
+                }
+            }
+            currentChart = new Chart(ctx, chartConfig);
+        }
+        
+        chartTypeSelect.addEventListener('change', renderChart);
+        chartDataSelect.addEventListener('change', renderChart);
+        document.getElementById('refresh-chart-btn').addEventListener('click', renderChart);
+        
+        // --- CONFIGURAÇÕES ---
+        document.getElementById('settings-button').addEventListener('click', () => openModal('settings-modal'));
+        document.getElementById('export-data-btn').addEventListener('click', () => { const dataStr = JSON.stringify(data); const blob = new Blob([dataStr], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_estudos_${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); });
+        document.getElementById('import-file-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file || !confirm("ATENÇÃO: Importar substituirá TODOS os dados atuais. Continuar?")) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const importedData = JSON.parse(event.target.result);
+                    if (importedData?.folders && importedData?.nextIds) { data = importedData; saveData(); alert("Dados importados! A página será recarregada."); location.reload(); } 
+                    else { alert("Erro: Arquivo de backup inválido."); }
+                } catch (err) { alert("Erro ao processar o arquivo."); }
+            };
+            reader.readAsText(file); e.target.value = '';
+        });
+        
+        // --- KICKSTART ---
+        if ('showDirectoryPicker' in window) {
+            initializeApp();
+        } else {
+            document.body.innerHTML = '<h1>Navegador incompatível</h1><p>Use Chrome, Edge ou outro navegador compatível.</p>';
+        }
     });
-    
-    // --- KICKSTART ---
-    if ('showDirectoryPicker' in window) {
-        initializeApp();
-    } else {
-        document.body.innerHTML = '<h1>Navegador incompatível</h1><p>Use Chrome, Edge ou outro navegador compatível.</p>';
-    }
-});
     </script>
 </body>
 </html>
