@@ -279,6 +279,99 @@
          body.dark-theme .history-log-info .log-details {
             color: #a0aec0;
         }
+
+        /* Novos Estilos para Janelas de Anexos */
+        .attachment-viewer-window {
+            position: absolute;
+            z-index: 1600;
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            min-width: 350px;
+            min-height: 250px;
+            width: 50vw;
+            height: 60vh;
+            display: flex;
+            flex-direction: column;
+            resize: both;
+            overflow: hidden; /* Importante para o 'resize' funcionar bem */
+        }
+        .attachment-viewer-window.minimized {
+            height: 40px !important;
+            min-height: 40px;
+            resize: none;
+            overflow: hidden;
+        }
+        .attachment-viewer-window .viewer-header {
+            background-color: var(--header-bg);
+            color: white;
+            padding: 8px 12px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            user-select: none;
+        }
+        .attachment-viewer-window .viewer-title {
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-right: 10px;
+        }
+        .attachment-viewer-window .viewer-controls button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            padding: 2px 5px;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+        .attachment-viewer-window .viewer-controls button:hover {
+            color: var(--accent-color);
+        }
+        .attachment-viewer-window .viewer-controls button.close-btn:hover {
+            color: var(--danger-color);
+        }
+        .attachment-viewer-window .viewer-controls button.pinned {
+            color: var(--warning-color);
+        }
+        .attachment-viewer-window .viewer-body {
+            flex-grow: 1;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .attachment-viewer-window .viewer-body iframe,
+        .attachment-viewer-window .viewer-body img,
+        .attachment-viewer-window .viewer-body video,
+        .attachment-viewer-window .viewer-body pre {
+            width: 100%;
+            height: 100%;
+            border: none;
+            object-fit: contain;
+        }
+        .attachment-viewer-window .viewer-body pre {
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            padding: 10px;
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: auto;
+            box-sizing: border-box;
+        }
+        .attachment-viewer-window .viewer-body div {
+             color: var(--text-color);
+             background-color: var(--secondary-bg);
+             padding: 20px;
+        }
+
     </style>
 </head>
 <body>
@@ -499,17 +592,6 @@
                     <button type="button" class="close-modal danger">Cancelar</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <div id="attachment-viewer-modal" class="modal" style="padding:0;">
-        <div class="viewer-content">
-            <div class="viewer-header">
-                <h3 id="viewer-title">Visualizador de Anexo</h3>
-                <button id="viewer-close-btn" class="danger">&times;</button>
-            </div>
-            <div id="viewer-body" class="viewer-body">
-            </div>
         </div>
     </div>
 
@@ -977,11 +1059,8 @@
         }
 
         // --- LÓGICA DO VISUALIZADOR DE ANEXOS ---
-        const viewerModal = document.getElementById('attachment-viewer-modal');
-        const viewerTitle = document.getElementById('viewer-title');
-        const viewerBody = document.getElementById('viewer-body');
-        const viewerCloseBtn = document.getElementById('viewer-close-btn');
-        let currentObjectUrl = null;
+        let highestZ = 1600;
+        let openViewers = 0;
 
         attachmentsListDiv.addEventListener('click', async (e) => {
             if (e.target.classList.contains('attachment-link')) {
@@ -992,32 +1071,7 @@
                 try {
                     const fileHandle = await rootDirectoryHandle.getFileHandle(filename);
                     const file = await fileHandle.getFile();
-                    if (currentObjectUrl) {
-                        URL.revokeObjectURL(currentObjectUrl);
-                    }
-                    const url = URL.createObjectURL(file);
-                    currentObjectUrl = url;
-
-                    viewerTitle.textContent = filename;
-                    viewerBody.innerHTML = '';
-
-                    if (file.type.startsWith('image/')) {
-                        viewerBody.innerHTML = `<img src="${url}" alt="${filename}">`;
-                    } else if (file.type === 'application/pdf') {
-                        viewerBody.innerHTML = `<iframe src="${url}"></iframe>`;
-                    } else if (file.type.startsWith('video/')) {
-                        viewerBody.innerHTML = `<video src="${url}" controls></video>`;
-                    } else if (file.type.startsWith('text/')) {
-                        const textContent = await file.text();
-                        const escapedText = textContent.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                        viewerBody.innerHTML = `<pre>${escapedText}</pre>`;
-                    } else {
-                        viewerBody.innerHTML = `<div style="text-align:center;">
-                                                    <p>Não é possível pré-visualizar este tipo de arquivo.</p>
-                                                    <a href="${url}" download="${filename}" class="download-link"><button>Baixar ${filename}</button></a>
-                                                </div>`;
-                    }
-                    viewerModal.style.display = 'flex';
+                    createAttachmentViewer(file, filename);
                 } catch (error) {
                     console.error("Erro ao abrir anexo:", error);
                     alert("Não foi possível encontrar ou abrir o anexo.");
@@ -1025,14 +1079,119 @@
             }
         });
 
-        viewerCloseBtn.addEventListener('click', () => {
-            viewerModal.style.display = 'none';
-            viewerBody.innerHTML = '';
-            if (currentObjectUrl) {
-                URL.revokeObjectURL(currentObjectUrl);
-                currentObjectUrl = null;
+        function createAttachmentViewer(file, filename) {
+            const objectUrl = URL.createObjectURL(file);
+
+            const viewerId = `viewer-${Date.now()}`;
+            const viewerWindow = document.createElement('div');
+            viewerWindow.id = viewerId;
+            viewerWindow.className = 'attachment-viewer-window';
+            viewerWindow.style.zIndex = ++highestZ;
+            viewerWindow.style.left = `${100 + (openViewers * 30)}px`;
+            viewerWindow.style.top = `${70 + (openViewers * 30)}px`;
+            openViewers = (openViewers + 1) % 10;
+
+            let contentHTML = '';
+            if (file.type.startsWith('image/')) {
+                contentHTML = `<img src="${objectUrl}" alt="${filename}" draggable="false">`;
+            } else if (file.type === 'application/pdf') {
+                contentHTML = `<iframe src="${objectUrl}"></iframe>`;
+            } else if (file.type.startsWith('video/')) {
+                contentHTML = `<video src="${objectUrl}" controls></video>`;
+            } else if (file.type.startsWith('text/')) {
+                contentHTML = `<pre>Carregando...</pre>`;
+            } else {
+                contentHTML = `<div>
+                                   <p>Não é possível pré-visualizar este tipo de arquivo.</p>
+                                   <a href="${objectUrl}" download="${filename}"><button>Baixar ${filename}</button></a>
+                               </div>`;
             }
-        });
+
+            viewerWindow.innerHTML = `
+                <div class="viewer-header">
+                    <span class="viewer-title">${filename}</span>
+                    <div class="viewer-controls">
+                        <button class="pin-btn" title="Fixar">📌</button>
+                        <button class="minimize-btn" title="Minimizar">_</button>
+                        <button class="close-btn" title="Fechar">&times;</button>
+                    </div>
+                </div>
+                <div class="viewer-body">${contentHTML}</div>
+            `;
+
+            document.body.appendChild(viewerWindow);
+
+            if (file.type.startsWith('text/')) {
+                file.text().then(textContent => {
+                    const pre = viewerWindow.querySelector('pre');
+                    if(pre) pre.textContent = textContent;
+                });
+            }
+
+            setupViewerWindow(viewerWindow, objectUrl);
+        }
+
+        function setupViewerWindow(win, objectUrl) {
+            const header = win.querySelector('.viewer-header');
+            const pinBtn = win.querySelector('.pin-btn');
+            const minimizeBtn = win.querySelector('.minimize-btn');
+            const closeBtn = win.querySelector('.close-btn');
+
+            closeBtn.onclick = () => {
+                win.remove();
+                URL.revokeObjectURL(objectUrl);
+                openViewers = Math.max(0, openViewers - 1);
+            };
+
+            win.addEventListener('mousedown', () => {
+                win.style.zIndex = ++highestZ;
+            }, true);
+
+            let isPinned = false;
+            pinBtn.onclick = () => {
+                isPinned = !isPinned;
+                pinBtn.classList.toggle('pinned', isPinned);
+                pinBtn.title = isPinned ? "Desafixar" : "Fixar";
+            };
+            
+            let originalSize = {};
+            minimizeBtn.onclick = () => {
+                const isMinimized = win.classList.toggle('minimized');
+                if (isMinimized) {
+                    originalSize = { width: win.style.width, height: win.style.height };
+                    win.style.width = '350px';
+                    win.style.height = ''; 
+                    minimizeBtn.innerHTML = '&#9633;';
+                    minimizeBtn.title = "Restaurar";
+                } else {
+                    win.style.width = originalSize.width || '50vw';
+                    win.style.height = originalSize.height || '60vh';
+                    minimizeBtn.innerHTML = '_';
+                    minimizeBtn.title = "Minimizar";
+                }
+            };
+
+            let offsetX, offsetY;
+            header.onmousedown = (e) => {
+                if (isPinned || e.target.matches('button')) return;
+                
+                offsetX = e.clientX - win.offsetLeft;
+                offsetY = e.clientY - win.offsetTop;
+
+                const moveHandler = (moveEvent) => {
+                    win.style.left = `${moveEvent.clientX - offsetX}px`;
+                    win.style.top = `${moveEvent.clientY - offsetY}px`;
+                };
+
+                const upHandler = () => {
+                    document.removeEventListener('mousemove', moveHandler);
+                    document.removeEventListener('mouseup', upHandler);
+                };
+
+                document.addEventListener('mousemove', moveHandler);
+                document.addEventListener('mouseup', upHandler);
+            };
+        }
         
         // --- LÓGICA DE FLASHCARDS ---
         const flashcardAreasContainer = document.getElementById('flashcard-areas-container');
@@ -1575,12 +1734,12 @@
             if (currentTimerType === 'study_cycle') {
                 const step = cycle.steps[currentCycleStepIndex];
                 if (step.restDuration > 0) {
-                                currentTimerType = 'rest';
-                                timerState = 'stopped';
-                                const restSeconds = step.restDuration * 60;
-                                cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
-                                startTimer(restSeconds);
-                                return;
+                                        currentTimerType = 'rest';
+                                        timerState = 'stopped';
+                                        const restSeconds = step.restDuration * 60;
+                                        cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
+                                        startTimer(restSeconds);
+                                        return;
                 }
             }
             
@@ -1733,11 +1892,11 @@
 
                 if (chartType === 'line') {
                     const dailyTotals = contextualHistory.reduce((acc, h) => {
-                          const day = h.date.split('T')[0];
-                          if (!acc[day]) acc[day] = { study: 0, rest: 0 };
-                          if (h.type.startsWith('study')) acc[day].study += h.duration;
-                          else if (h.type === 'rest') acc[day].rest += h.duration;
-                          return acc;
+                         const day = h.date.split('T')[0];
+                         if (!acc[day]) acc[day] = { study: 0, rest: 0 };
+                         if (h.type.startsWith('study')) acc[day].study += h.duration;
+                         else if (h.type === 'rest') acc[day].rest += h.duration;
+                         return acc;
                     }, {});
                     const sortedDays = Object.keys(dailyTotals).sort();
                     chartConfig = { type: 'line', data: { labels: sortedDays, datasets: [ { label: 'Estudo (minutos)', data: sortedDays.map(day => (dailyTotals[day].study / 60).toFixed(2)), borderColor: vars.accentColor, tension: 0.1, fill: false }, { label: 'Descanso (minutos)', data: sortedDays.map(day => (dailyTotals[day].rest / 60).toFixed(2)), borderColor: vars.successColor, tension: 0.1, fill: false } ] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Evolução de Estudo vs. Descanso por Dia' } }, scales: { x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy' } }, y: { beginAtZero: true, title: { display: true, text: 'Minutos' } } } } };
@@ -1756,19 +1915,19 @@
                 const validStudyHistory = validHistory.filter(h => h.type.startsWith('study') && h[key]);
 
                 if (validStudyHistory.length === 0) {
-                       container.innerHTML = `<p style='text-align:center; padding: 40px;'>Sem dados de estudo para a análise de '${dataType === 'subject' ? 'Matérias' : 'Assuntos'}'.</p>`;
-                       return;
+                        container.innerHTML = `<p style='text-align:center; padding: 40px;'>Sem dados de estudo para a análise de '${dataType === 'subject' ? 'Matérias' : 'Assuntos'}'.</p>`;
+                        return;
                 }
 
                 if (chartType === 'line') {
-                      const dailyTotals = validStudyHistory.reduce((acc, h) => {
-                          const day = h.date.split('T')[0];
-                          if (!acc[day]) acc[day] = 0;
-                          acc[day] += h.duration;
-                          return acc;
-                      }, {});
-                      const sortedDays = Object.keys(dailyTotals).sort();
-                      chartConfig = { type: 'line', data: { labels: sortedDays, datasets: [{ label: 'Total de Estudo (minutos)', data: sortedDays.map(day => (dailyTotals[day] / 60).toFixed(2)), borderColor: vars.accentColor, tension: 0.1 }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Evolução Total de Estudo por Dia' } }, scales: { x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy' } }, y: { beginAtZero: true, title: { display: true, text: 'Minutos' } } } } };
+                        const dailyTotals = validStudyHistory.reduce((acc, h) => {
+                             const day = h.date.split('T')[0];
+                             if (!acc[day]) acc[day] = 0;
+                             acc[day] += h.duration;
+                             return acc;
+                        }, {});
+                        const sortedDays = Object.keys(dailyTotals).sort();
+                        chartConfig = { type: 'line', data: { labels: sortedDays, datasets: [{ label: 'Total de Estudo (minutos)', data: sortedDays.map(day => (dailyTotals[day] / 60).toFixed(2)), borderColor: vars.accentColor, tension: 0.1 }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Evolução Total de Estudo por Dia' } }, scales: { x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy' } }, y: { beginAtZero: true, title: { display: true, text: 'Minutos' } } } } };
                 } else { 
                     const aggregated = validStudyHistory.reduce((acc, h) => {
                         if(h[key]) {
