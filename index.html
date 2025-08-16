@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Organizador de Estudos Definitivo</title>
-    <link rel="shortcut icon" href="anexo.ico" type="image/x-icon">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -235,67 +234,50 @@
         .flashcard-actions button:hover { color: var(--danger-color); }
         .flashcard-actions .duplicate-card:hover { color: var(--accent-color); }
 
-        /* --- ESTILOS PARA O VISUALIZADOR DE ANEXOS (CORRIGIDO) --- */
-        #attachment-viewer-modal .viewer-content {
-            background-color: var(--secondary-bg);
-            width: 95%;
-            max-width: 1200px;
-            height: 90vh;
-            margin: auto;
-            display: flex;
-            flex-direction: column;
-            border-radius: 8px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
-        }
-        .viewer-header {
+        /* Estilos Lixeira */
+        .trash-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 20px;
-            border-bottom: 1px solid var(--border-color);
-            flex-shrink: 0;
-        }
-        .viewer-header h3 {
-            margin: 0;
-            border: none;
-            padding: 0;
-        }
-        #viewer-close-btn {
-            font-size: 1.5em;
-            padding: 0 10px;
-            line-height: 1;
-        }
-        .viewer-body {
-            flex-grow: 1;
-            overflow: hidden; /* Evita barras de rolagem duplas */
             padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .trash-item:last-child {
+            border-bottom: none;
+        }
+        .trash-item-info span {
+            display: block;
+        }
+        .trash-item-info .item-type {
+            font-size: 0.8em;
+            color: #718096;
+            text-transform: capitalize;
+        }
+        body.dark-theme .trash-item-info .item-type {
+            color: #a0aec0;
+        }
+        
+        /* Estilos Histórico de Estudo */
+        .history-log-item {
             display: flex;
-            justify-content: center;
-            /* Alterado para 'stretch' para permitir que o conteúdo preencha o espaço */
-            align-items: stretch; 
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            gap: 15px;
         }
-        /* Regra para imagens e vídeos, que mantêm a proporção e se centralizam */
-        .viewer-body img, .viewer-body video {
-            max-width: 100%;
-            max-height: 100%;
-            border: none;
-            align-self: center; /* Impede que a imagem/vídeo seja esticado */
+        .history-log-item:last-child { border-bottom: none; }
+        .history-log-info {
+            font-size: 0.9em;
+            display: flex;
+            flex-direction: column;
         }
-        /* Regra para PDFs e texto, que devem preencher o espaço */
-        .viewer-body iframe, .viewer-body pre {
-            width: 100%;
-            height: 100%;
-            border: none;
+        .history-log-info .log-details {
+             font-size: 0.8em;
+             color: #718096;
         }
-        .viewer-body pre {
-            white-space: pre-wrap;
-            word-break: break-all;
-            padding: 15px;
-            background-color: var(--primary-bg);
-            border-radius: 5px;
-            text-align: left;
-            box-sizing: border-box;
-            font-family: 'Courier New', Courier, monospace;
+         body.dark-theme .history-log-info .log-details {
+            color: #a0aec0;
         }
     </style>
 </head>
@@ -404,6 +386,10 @@
                     <div id="cycles-container" class="mt-4"></div>
                 </div>
             </div>
+            <div class="card mt-4">
+                <h3>Registro de Estudos Recentes</h3>
+                <div id="study-history-log" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
         </div>
 
         <div id="graficos-tab" class="tab-content">
@@ -489,6 +475,7 @@
     <div id="settings-modal" class="modal">
         <div class="modal-content">
             <h2>Configurações</h2>
+            <button id="open-trash-btn" style="margin-bottom: 10px;">🗑️ Lixeira</button>
             <button id="export-data-btn">Exportar Dados</button>
             <div class="form-group" style="margin-top: 20px;"><label for="import-file-input">Importar Dados:</label><input type="file" id="import-file-input" accept=".json"></div>
             <button type="button" class="close-modal danger" style="margin-top: 15px;">Fechar</button>
@@ -525,6 +512,18 @@
             </div>
         </div>
     </div>
+
+    <div id="trash-modal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <h2>Lixeira</h2>
+            <p>Itens excluídos são mantidos aqui. Você pode restaurá-los ou excluí-los permanentemente.</p>
+            <div id="trash-list" style="margin-top: 20px; max-height: 60vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 5px; min-height: 100px;"></div>
+            <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <button id="empty-trash-btn" class="danger">Esvaziar Lixeira</button>
+                <button type="button" class="close-modal danger">Fechar</button>
+            </div>
+        </div>
+    </div>
     
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -538,6 +537,7 @@
             folders: [], flashcardAreas: [],
             schedules: { activities: [], reviews: [] },
             cycles: [], studyHistory: [],
+            trash: [], // Lixeira
             nextIds: { folder: 1, subject: 1, topic: 1, attachment: 1, flashcardArea: 1, flashcard: 1, schedule: 1, cycle: 1, cycleItem: 1, history: 1 }
         };
         
@@ -555,9 +555,10 @@
             const savedData = localStorage.getItem('studyOrganizerData_v4');
             if (savedData) {
                 const parsedData = JSON.parse(savedData);
-                const defaultStructure = { folders: [], flashcardAreas: [], schedules: { activities: [], reviews: [] }, cycles: [], studyHistory: [], nextIds: { ...data.nextIds } };
+                const defaultStructure = { folders: [], flashcardAreas: [], schedules: { activities: [], reviews: [] }, cycles: [], studyHistory: [], trash: [], nextIds: { ...data.nextIds } };
                 data = { ...defaultStructure, ...parsedData };
                 data.nextIds = { ...defaultStructure.nextIds, ...(parsedData.nextIds || {}) };
+                if (!data.trash) data.trash = [];
             }
         }
 
@@ -581,6 +582,7 @@
             renderSchedules();
             renderCycles();
             populateTimerSelectors(document.getElementById('timer-subject-select'), document.getElementById('timer-topic-select'));
+            renderStudyHistoryLog();
         }
 
         function initDB() { return new Promise((resolve, reject) => { const request = indexedDB.open('StudyAppDB_v4', 1); request.onerror = () => reject("Erro ao abrir IndexedDB."); request.onsuccess = (event) => { db = event.target.result; resolve(); }; request.onupgradeneeded = (event) => { const db = event.target.result; if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' }); }; }); }
@@ -651,7 +653,10 @@
                     else content.classList.remove('active');
                 });
                 if (tabId === 'attachments') updateAttachmentSelectors();
-                if (tabId === 'cronometro') populateTimerSelectors(document.getElementById('timer-subject-select'), document.getElementById('timer-topic-select'));
+                if (tabId === 'cronometro') {
+                    populateTimerSelectors(document.getElementById('timer-subject-select'), document.getElementById('timer-topic-select'));
+                    renderStudyHistoryLog();
+                }
                 if (tabId === 'graficos') renderChart();
             });
         });
@@ -797,10 +802,29 @@
             else if (button.classList.contains('add-topic-btn')) openItemModal('topic', null, { folderId, subjectId: id });
             else if (button.classList.contains('edit-btn')) openItemModal(type, id, { folderId, subjectId });
             else if (button.classList.contains('delete-btn')) {
-                if (!confirm('Excluir este item e todo o seu conteúdo?')) return;
-                if (type === 'folder') data.folders = data.folders.filter(f => f.id != id);
-                else if (type === 'subject') findItemPath(folderId, 'folder').folder.subjects = findItemPath(folderId, 'folder').folder.subjects.filter(s => s.id != id);
-                else if (type === 'topic') findItemPath(subjectId, 'subject').subject.topics = findItemPath(subjectId, 'subject').subject.topics.filter(t => t.id != id);
+                 if (!confirm('Mover este item e todo o seu conteúdo para a lixeira?')) return;
+                
+                if (type === 'folder') {
+                    const folderIndex = data.folders.findIndex(f => f.id == id);
+                    if (folderIndex > -1) {
+                        const [itemToTrash] = data.folders.splice(folderIndex, 1);
+                        moveToTrash(itemToTrash, type);
+                    }
+                } else if (type === 'subject') {
+                    const { folder } = findItemPath(id, type);
+                    const subjectIndex = folder.subjects.findIndex(s => s.id == id);
+                    if (subjectIndex > -1) {
+                        const [itemToTrash] = folder.subjects.splice(subjectIndex, 1);
+                        moveToTrash(itemToTrash, type, { folderId: folder.id });
+                    }
+                } else if (type === 'topic') {
+                    const { subject } = findItemPath(id, type);
+                    const topicIndex = subject.topics.findIndex(t => t.id == id);
+                    if(topicIndex > -1) {
+                        const [itemToTrash] = subject.topics.splice(topicIndex, 1);
+                        moveToTrash(itemToTrash, type, { subjectId: subject.id });
+                    }
+                }
                 renderAll(); saveData();
             } else if (button.classList.contains('duplicate-btn')) {
                 function deepCloneWithNewIds(item, type) {
@@ -857,10 +881,12 @@
             const subjectId = attachmentSubjectSelect.value;
             attachmentTopicSelect.innerHTML = '<option value="">Selecione um Assunto...</option>';
             if (subjectId) {
-                const subject = findItemPath(subjectId, 'subject').subject;
-                subject.topics.forEach(topic => {
-                    attachmentTopicSelect.innerHTML += `<option value="${topic.id}">${topic.name}</option>`;
-                });
+                const { subject } = findItemPath(subjectId, 'subject');
+                if (subject) {
+                    subject.topics.forEach(topic => {
+                        attachmentTopicSelect.innerHTML += `<option value="${topic.id}">${topic.name}</option>`;
+                    });
+                }
                 attachmentTopicContainer.style.display = 'block';
             } else {
                 attachmentTopicContainer.style.display = 'none';
@@ -1008,8 +1034,6 @@
             }
         });
         
-        // --- CÓDIGO RESTANTE (FLASHCARDS, AGENDAMENTOS, CRONÔMETRO, GRÁFICOS, etc.) ---
-        
         // --- LÓGICA DE FLASHCARDS ---
         const flashcardAreasContainer = document.getElementById('flashcard-areas-container');
         const areaForm = document.getElementById('flashcard-area-form');
@@ -1083,13 +1107,27 @@
             document.getElementById('scheduled-activities-list').innerHTML = data.schedules.activities.sort((a,b)=>new Date(a.startTime)-new Date(b.startTime)).map(createScheduleElement).join('');
             document.getElementById('scheduled-reviews-list').innerHTML = data.schedules.reviews.sort((a,b)=>new Date(a.startTime)-new Date(b.startTime)).map(createScheduleElement).join('');
             document.querySelectorAll('.schedule-item .edit-btn').forEach(btn => btn.addEventListener('click', (e) => openScheduleModal(e.target.dataset.type, e.target.dataset.id)));
-            document.querySelectorAll('.schedule-item .delete-btn').forEach(btn => btn.addEventListener('click', (e) => { if (confirm('Excluir?')) { const k=e.target.dataset.type==='activity'?'activities':'reviews'; data.schedules[k]=data.schedules[k].filter(i=>i.id!=e.target.dataset.id); renderSchedules(); saveData(); }}));
+            document.querySelectorAll('.schedule-item .delete-btn').forEach(btn => btn.addEventListener('click', (e) => { 
+                if (confirm('Mover para a lixeira?')) { 
+                    const type = e.target.dataset.type;
+                    const id = e.target.dataset.id;
+                    const listKey = type === 'activity' ? 'activities' : 'reviews';
+                    const itemIndex = data.schedules[listKey].findIndex(i => i.id == id);
+                    if (itemIndex > -1) {
+                        const [itemToTrash] = data.schedules[listKey].splice(itemIndex, 1);
+                        moveToTrash(itemToTrash, type);
+                        renderSchedules(); 
+                        saveData();
+                    }
+                }
+            }));
         }
         function createScheduleElement(item) {
             const path = findItemPath(item.topicId, 'topic');
+            let name = path.topic ? `${path.folder.name} / ${path.subject.name} > ${path.topic.name}` : 'Item não encontrado';
             return `<div class="schedule-item ${item.completed ? 'completed' : ''}">
                         <div>
-                            <strong>${path.folder?.name||'?'}/${path.subject?.name||'?'}>${path.topic?.name||'?'}</strong>
+                            <strong>${name}</strong>
                             <div class="schedule-info">
                                 <span>Início: ${new Date(item.startTime).toLocaleString('pt-BR')}</span>
                                 <span>Fim: ${new Date(item.endTime).toLocaleString('pt-BR')}</span>
@@ -1130,14 +1168,17 @@
             subjectSelect.innerHTML = '<option value="">Selecione...</option>';
             data.folders.forEach(folder => folder.subjects.forEach(subject => subjectSelect.innerHTML += `<option value="${subject.id}">${folder.name} / ${subject.name}</option>`));
             subjectSelect.onchange = () => {
-                topicSelect.innerHTML = '<option value="">Selecione...</option>'; const subject = findItemPath(subjectSelect.value, 'subject').subject;
-                if (subject) subject.topics.forEach(t => topicSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+                topicSelect.innerHTML = '<option value="">Selecione...</option>'; 
+                if (subjectSelect.value) {
+                    const { subject } = findItemPath(subjectSelect.value, 'subject');
+                    if (subject) subject.topics.forEach(t => topicSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+                }
             };
             if (id) {
                 const item = type === 'activity' ? data.schedules.activities.find(i => i.id == id) : data.schedules.reviews.find(i => i.id == id);
                 document.getElementById('schedule-modal-title').innerText = `Editar ${type==='activity'?'Atividade':'Revisão'}`;
                 document.getElementById('schedule-edit-id').value = id;
-                if (item.subjectId) { subjectSelect.value = item.subjectId; subjectSelect.dispatchEvent(new Event('change')); topicSelect.value = item.topicId; }
+                if (item.subjectId) { subjectSelect.value = item.subjectId; subjectSelect.dispatchEvent(new Event('change')); if(item.topicId) topicSelect.value = item.topicId; }
                 document.getElementById('start-time').value = item.startTime; document.getElementById('end-time').value = item.endTime;
             } else { document.getElementById('schedule-modal-title').innerText = `Agendar ${type==='activity'?'Atividade':'Revisão'}`; document.getElementById('schedule-edit-id').value = ''; topicSelect.innerHTML = '<option value="">Selecione a matéria</option>'; }
             openModal('schedule-modal');
@@ -1153,6 +1194,7 @@
                 duration: durationSeconds, type: type, date: sessionDate.toISOString()
             });
             saveData();
+            renderStudyHistoryLog();
         }
         function playAlarm(message) {
             if (activeAlarmSound) return;
@@ -1179,7 +1221,8 @@
                     const startTime = new Date(item.startTime);
                     const endTime = new Date(item.endTime);
                     if (now >= startTime && !item.notified) {
-                        playAlarm(`Hora de iniciar: ${findItemPath(item.topicId, 'topic').topic?.name || 'Atividade Agendada'}`);
+                         const path = findItemPath(item.topicId, 'topic');
+                         playAlarm(`Hora de iniciar: ${path.topic?.name || 'Atividade Agendada'}`);
                         item.notified = true;
                         needsSave = true;
                     }
@@ -1205,7 +1248,7 @@
             alarmInterval = setInterval(checkSchedules, 30000);
         }
         
-        // --- LÓGICA DO CRONÔMETRO E CICLOS ---
+        // --- LÓGICA DO CRONÔMETRO, CICLOS E REGISTRO ---
         const timerSubjectSelect = document.getElementById('timer-subject-select');
         const timerTopicSelect = document.getElementById('timer-topic-select');
         const timerDisplay = document.getElementById('timer-display');
@@ -1227,7 +1270,7 @@
             subjectSelect.onchange = () => {
                 topicSelect.innerHTML = '<option value="">Selecione o Assunto...</option>';
                 if (subjectSelect.value) {
-                    const subject = findItemPath(subjectSelect.value, 'subject').subject;
+                    const { subject } = findItemPath(subjectSelect.value, 'subject');
                     if (subject) subject.topics.forEach(t => topicSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
                 }
             };
@@ -1251,7 +1294,7 @@
             document.getElementById('timer-duration').disabled = timerState !== 'stopped';
             document.getElementById('timer-rest-duration').disabled = timerState !== 'stopped';
         }
-
+        
         function startTimer(durationInSeconds = null) {
             if(timerState === 'running') return;
 
@@ -1532,12 +1575,12 @@
             if (currentTimerType === 'study_cycle') {
                 const step = cycle.steps[currentCycleStepIndex];
                 if (step.restDuration > 0) {
-                       currentTimerType = 'rest';
-                       timerState = 'stopped';
-                       const restSeconds = step.restDuration * 60;
-                       cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
-                       startTimer(restSeconds);
-                       return;
+                                currentTimerType = 'rest';
+                                timerState = 'stopped';
+                                const restSeconds = step.restDuration * 60;
+                                cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
+                                startTimer(restSeconds);
+                                return;
                 }
             }
             
@@ -1562,6 +1605,59 @@
             startTimer(studySeconds);
         }
         
+        // --- LÓGICA DO REGISTRO DE ESTUDOS ---
+        const studyHistoryLogDiv = document.getElementById('study-history-log');
+
+        function renderStudyHistoryLog() {
+            studyHistoryLogDiv.innerHTML = '';
+            if (!data.studyHistory || data.studyHistory.length === 0) {
+                studyHistoryLogDiv.innerHTML = '<p style="text-align:center; padding: 20px; color: #718096;">Nenhum estudo registrado ainda.</p>';
+                return;
+            }
+
+            const studySessions = data.studyHistory
+                .filter(item => item.type !== 'rest')
+                .sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            if (studySessions.length === 0) {
+                studyHistoryLogDiv.innerHTML = '<p style="text-align:center; padding: 20px; color: #718096;">Nenhum estudo registrado ainda.</p>';
+                return;
+            }
+
+            studySessions.forEach(log => {
+                const logEl = document.createElement('div');
+                logEl.className = 'history-log-item';
+                
+                const path = log.topicId ? findItemPath(log.topicId, 'topic') : findItemPath(log.subjectId, 'subject');
+                const name = path.topic ? `${path.subject.name} > ${path.topic.name}` : (path.subject ? path.subject.name : 'Matéria/Assunto Excluído');
+                const durationMinutes = (log.duration / 60).toFixed(1);
+
+                logEl.innerHTML = `
+                    <div class="history-log-info">
+                        <strong>${name}</strong>
+                        <span class="log-details">${durationMinutes} minutos em ${new Date(log.date).toLocaleString('pt-BR')}</span>
+                    </div>
+                    <button class="delete-history-btn danger" data-id="${log.id}" style="padding: 5px 10px;" title="Mover para Lixeira">×</button>
+                `;
+                studyHistoryLogDiv.appendChild(logEl);
+            });
+        }
+        
+        studyHistoryLogDiv.addEventListener('click', (e) => {
+             if (e.target.classList.contains('delete-history-btn')) {
+                const logId = parseInt(e.target.dataset.id, 10);
+                if (confirm('Deseja mover este registro para a lixeira?')) {
+                    const logIndex = data.studyHistory.findIndex(log => log.id === logId);
+                    if (logIndex > -1) {
+                        const [itemToTrash] = data.studyHistory.splice(logIndex, 1);
+                        moveToTrash(itemToTrash, 'study_history');
+                        saveData();
+                        renderStudyHistoryLog();
+                    }
+                }
+            }
+        });
+
         // --- LÓGICA DOS GRÁFICOS ---
         const chartTypeSelect = document.getElementById('chart-type-select');
         const chartDataSelect = document.getElementById('chart-data-select');
@@ -1657,11 +1753,11 @@
                 }
             } else { // subject or topic
                 const key = dataType === 'subject' ? 'subjectId' : 'topicId';
-                const validStudyHistory = validHistory.filter(h => h.type.startsWith('study'));
+                const validStudyHistory = validHistory.filter(h => h.type.startsWith('study') && h[key]);
 
                 if (validStudyHistory.length === 0) {
-                     container.innerHTML = `<p style='text-align:center; padding: 40px;'>Sem dados de estudo para a análise de '${dataType === 'subject' ? 'Matérias' : 'Assuntos'}'.</p>`;
-                     return;
+                       container.innerHTML = `<p style='text-align:center; padding: 40px;'>Sem dados de estudo para a análise de '${dataType === 'subject' ? 'Matérias' : 'Assuntos'}'.</p>`;
+                       return;
                 }
 
                 if (chartType === 'line') {
@@ -1675,8 +1771,10 @@
                       chartConfig = { type: 'line', data: { labels: sortedDays, datasets: [{ label: 'Total de Estudo (minutos)', data: sortedDays.map(day => (dailyTotals[day] / 60).toFixed(2)), borderColor: vars.accentColor, tension: 0.1 }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Evolução Total de Estudo por Dia' } }, scales: { x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy' } }, y: { beginAtZero: true, title: { display: true, text: 'Minutos' } } } } };
                 } else { 
                     const aggregated = validStudyHistory.reduce((acc, h) => {
-                        if (!acc[h[key]]) acc[h[key]] = 0;
-                        acc[h[key]] += h.duration;
+                        if(h[key]) {
+                           if (!acc[h[key]]) acc[h[key]] = 0;
+                           acc[h[key]] += h.duration;
+                        }
                         return acc;
                     }, {});
 
@@ -1699,6 +1797,117 @@
         chartDataSelect.addEventListener('change', renderChart);
         document.getElementById('refresh-chart-btn').addEventListener('click', renderChart);
         
+        // --- LÓGICA DA LIXEIRA ---
+        function moveToTrash(item, type, parentIds = {}) {
+            if (!data.trash) data.trash = [];
+            data.trash.push({
+                item: JSON.parse(JSON.stringify(item)),
+                type: type,
+                deletedAt: new Date().toISOString(),
+                parentIds: parentIds
+            });
+            saveData();
+        }
+
+        function renderTrash() {
+            const trashListDiv = document.getElementById('trash-list');
+            trashListDiv.innerHTML = '';
+            if (!data.trash || data.trash.length === 0) {
+                trashListDiv.innerHTML = '<p style="text-align:center; padding: 20px; color: #718096;">A lixeira está vazia.</p>';
+                return;
+            }
+
+            data.trash.sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt)).forEach((trashedItem, index) => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'trash-item';
+                
+                let itemName = trashedItem.item.name || `Item Desconhecido`;
+
+                if (trashedItem.type === 'activity' || trashedItem.type === 'review') {
+                    const path = findItemPath(trashedItem.item.topicId, 'topic');
+                    itemName = path.topic ? `${path.subject.name} > ${path.topic.name}` : `Agendamento de item excluído`;
+                } else if (trashedItem.type === 'study_history') {
+                    const log = trashedItem.item;
+                    const path = log.topicId ? findItemPath(log.topicId, 'topic') : findItemPath(log.subjectId, 'subject');
+                    const name = path.topic ? `${path.subject.name} > ${path.topic.name}` : (path.subject ? path.subject.name : 'Matéria/Assunto Excluído');
+                    const durationMinutes = (log.duration / 60).toFixed(1);
+                    itemName = `Registro: ${name} (${durationMinutes} min)`;
+                }
+
+                itemEl.innerHTML = `
+                    <div class="trash-item-info">
+                        <strong>${itemName}</strong>
+                        <span class="item-type">${trashedItem.type.replace('_', ' ')} - Excluído em: ${new Date(trashedItem.deletedAt).toLocaleString('pt-BR')}</span>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="restore-btn success" data-index="${index}">Restaurar</button>
+                        <button class="perm-delete-btn danger" data-index="${index}">Excluir</button>
+                    </div>
+                `;
+                trashListDiv.appendChild(itemEl);
+            });
+        }
+        
+        document.getElementById('open-trash-btn').addEventListener('click', () => {
+            renderTrash();
+            openModal('trash-modal');
+        });
+
+        document.getElementById('trash-list').addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            const index = parseInt(button.dataset.index, 10);
+            const trashedItem = data.trash[index];
+
+            if (button.classList.contains('restore-btn')) {
+                 if (trashedItem.type === 'folder') {
+                    data.folders.push(trashedItem.item);
+                } else if (trashedItem.type === 'subject') {
+                    const parentFolder = data.folders.find(f => f.id == trashedItem.parentIds.folderId);
+                    if (parentFolder) {
+                        parentFolder.subjects.push(trashedItem.item);
+                    } else {
+                        alert("A pasta original não foi encontrada. O item será restaurado em uma nova pasta.");
+                        data.folders.push({id: getNextId('folder'), name: "Pasta Restaurada", color: "#cccccc", subjects: [trashedItem.item]});
+                    }
+                } else if (trashedItem.type === 'topic') {
+                    const parentSubject = data.folders.flatMap(f => f.subjects).find(s => s.id == trashedItem.parentIds.subjectId);
+                    if(parentSubject) {
+                         parentSubject.topics.push(trashedItem.item);
+                    } else {
+                        alert("A matéria original não foi encontrada. O item será restaurado em uma nova estrutura.");
+                        data.folders.push({id: getNextId('folder'), name: "Pasta Restaurada", color: "#cccccc", subjects: [{id: getNextId('subject'), name: "Matéria Restaurada", color:"#cccccc", topics: [trashedItem.item]}]});
+                    }
+                } else if (trashedItem.type === 'activity') {
+                    data.schedules.activities.push(trashedItem.item);
+                } else if (trashedItem.type === 'review') {
+                    data.schedules.reviews.push(trashedItem.item);
+                } else if (trashedItem.type === 'study_history') {
+                    data.studyHistory.push(trashedItem.item);
+                }
+                
+                data.trash.splice(index, 1);
+                renderAll();
+                renderTrash();
+                saveData();
+            } else if (button.classList.contains('perm-delete-btn')) {
+                if (confirm('Excluir permanentemente? Esta ação não pode ser desfeita.')) {
+                    data.trash.splice(index, 1);
+                    renderTrash();
+                    saveData();
+                }
+            }
+        });
+
+        document.getElementById('empty-trash-btn').addEventListener('click', () => {
+            if (data.trash.length > 0 && confirm('Esvaziar toda a lixeira? Esta ação não pode ser desfeita.')) {
+                data.trash = [];
+                renderTrash();
+                saveData();
+            }
+        });
+
         // --- CONFIGURAÇÕES ---
         document.getElementById('settings-button').addEventListener('click', () => openModal('settings-modal'));
         document.getElementById('export-data-btn').addEventListener('click', () => { const dataStr = JSON.stringify(data); const blob = new Blob([dataStr], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_estudos_${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); });
@@ -1720,10 +1929,9 @@
         if ('showDirectoryPicker' in window) {
             initializeApp();
         } else {
-            document.body.innerHTML = '<h1>Navegador incompatível</h1><p>Use Chrome, Edge ou outro navegador compatível.</p>';
+            document.body.innerHTML = '<h1>Navegador incompatível</h1><p>Use Chrome, Edge ou outro navegador compatível com as APIs do sistema de arquivos.</p>';
         }
     });
     </script>
 </body>
 </html>
-
