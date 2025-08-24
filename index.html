@@ -296,12 +296,21 @@
             flex-direction: column;
             resize: both;
             overflow: hidden; /* Importante para o 'resize' funcionar bem */
+            transition: width 0.3s, height 0.3s, top 0.3s, left 0.3s;
         }
         .attachment-viewer-window.minimized {
             height: 40px !important;
             min-height: 40px;
             resize: none;
             overflow: hidden;
+        }
+        .attachment-viewer-window.maximized {
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            resize: none;
+            border-radius: 0;
         }
         .attachment-viewer-window .viewer-header {
             background-color: var(--header-bg);
@@ -370,14 +379,56 @@
              color: var(--text-color);
              background-color: var(--secondary-bg);
              padding: 20px;
-        }/* do código
-	/* Adicione este código para ajustar a largura de TODOS os campos de formulário */
-	.form-group {
-	    max-width: 435px; /* <-- Altere este valor para o tamanho máximo desejado */
-	    margin-left: 0;  /* Garante o alinhamento à esquerda */
-	    margin-right: auto; /* Garante o alinhamento à esquerda */
-	}
-	
+        }
+        #viewer-taskbar {
+            position: fixed;
+            bottom: 0;
+            left: var(--sidebar-width);
+            width: calc(100% - var(--sidebar-width));
+            height: 35px;
+            background-color: var(--primary-bg);
+            z-index: 2100;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            gap: 8px;
+            overflow-x: auto;
+            border-top: 1px solid var(--border-color);
+            transition: left 0.3s ease, width 0.3s ease;
+        }
+        body:has(.sidebar.collapsed) #viewer-taskbar {
+            left: 0;
+            width: 100%;
+        }
+        .taskbar-item {
+            background-color: var(--secondary-bg);
+            color: var(--text-color);
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 0.9em;
+            border: 1px solid var(--border-color);
+            flex-shrink: 0;
+            transition: background-color 0.2s;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .taskbar-item:hover {
+            filter: brightness(95%);
+        }
+        body.dark-theme .taskbar-item:hover {
+            filter: brightness(120%);
+        }
+
+        /* Adicione este código para ajustar a largura de TODOS os campos de formulário */
+        .form-group {
+            max-width: 435px; /* <-- Altere este valor para o tamanho máximo desejado */
+            margin-left: 0;  /* Garante o alinhamento à esquerda */
+            margin-right: auto; /* Garante o alinhamento à esquerda */
+        }
+    
     </style>
 </head>
 <body>
@@ -613,6 +664,8 @@
         </div>
     </div>
     
+    <div id="viewer-taskbar"></div>
+
     <script>
     document.addEventListener('DOMContentLoaded', () => {
     
@@ -1118,7 +1171,8 @@
                     <span class="viewer-title">${filename}</span>
                     <div class="viewer-controls">
                         <button class="pin-btn" title="Fixar">📌</button>
-                        <button class="minimize-btn" title="Minimizar">_</button>
+                        <button class="hide-btn" title="Ocultar">-</button>
+                        <button class="maximize-btn" title="Maximizar">&#9633;</button>
                         <button class="close-btn" title="Fechar">&times;</button>
                     </div>
                 </div>
@@ -1127,6 +1181,20 @@
 
             document.body.appendChild(viewerWindow);
 
+            const taskbar = document.getElementById('viewer-taskbar');
+            const taskbarItem = document.createElement('div');
+            taskbarItem.className = 'taskbar-item';
+            taskbarItem.textContent = filename;
+            taskbarItem.dataset.viewerId = viewerWindow.id;
+            taskbar.appendChild(taskbarItem);
+
+            taskbarItem.addEventListener('click', () => {
+                if (viewerWindow.style.display === 'none') {
+                    viewerWindow.style.display = 'flex';
+                }
+                viewerWindow.style.zIndex = ++highestZ;
+            });
+
             if (file.type.startsWith('text/')) {
                 file.text().then(textContent => {
                     const pre = viewerWindow.querySelector('pre');
@@ -1134,17 +1202,19 @@
                 });
             }
 
-            setupViewerWindow(viewerWindow, objectUrl);
+            setupViewerWindow(viewerWindow, objectUrl, taskbarItem);
         }
 
-        function setupViewerWindow(win, objectUrl) {
+        function setupViewerWindow(win, objectUrl, taskbarItem) {
             const header = win.querySelector('.viewer-header');
             const pinBtn = win.querySelector('.pin-btn');
-            const minimizeBtn = win.querySelector('.minimize-btn');
+            const hideBtn = win.querySelector('.hide-btn');
+            const maximizeBtn = win.querySelector('.maximize-btn');
             const closeBtn = win.querySelector('.close-btn');
 
             closeBtn.onclick = () => {
                 win.remove();
+                taskbarItem.remove();
                 URL.revokeObjectURL(objectUrl);
                 openViewers = Math.max(0, openViewers - 1);
             };
@@ -1152,6 +1222,10 @@
             win.addEventListener('mousedown', () => {
                 win.style.zIndex = ++highestZ;
             }, true);
+            
+            hideBtn.onclick = () => {
+                win.style.display = 'none';
+            };
 
             let isPinned = false;
             pinBtn.onclick = () => {
@@ -1160,26 +1234,29 @@
                 pinBtn.title = isPinned ? "Desafixar" : "Fixar";
             };
             
-            let originalSize = {};
-            minimizeBtn.onclick = () => {
-                const isMinimized = win.classList.toggle('minimized');
-                if (isMinimized) {
-                    originalSize = { width: win.style.width, height: win.style.height };
-                    win.style.width = '350px';
-                    win.style.height = ''; 
-                    minimizeBtn.innerHTML = '&#9633;';
-                    minimizeBtn.title = "Restaurar";
+            let isMaximized = false;
+            let originalTransform = {};
+            maximizeBtn.onclick = () => {
+                if(isMaximized) {
+                    win.style.top = originalTransform.top;
+                    win.style.left = originalTransform.left;
+                    win.style.width = originalTransform.width;
+                    win.style.height = originalTransform.height;
+                    win.classList.remove('maximized');
+                    maximizeBtn.innerHTML = '&#9633;';
+                    maximizeBtn.title = 'Maximizar';
                 } else {
-                    win.style.width = originalSize.width || '50vw';
-                    win.style.height = originalSize.height || '60vh';
-                    minimizeBtn.innerHTML = '_';
-                    minimizeBtn.title = "Minimizar";
+                    originalTransform = { top: win.style.top, left: win.style.left, width: win.style.width, height: win.style.height };
+                    win.classList.add('maximized');
+                    maximizeBtn.innerHTML = '&#11135;';
+                    maximizeBtn.title = 'Restaurar';
                 }
+                isMaximized = !isMaximized;
             };
 
             let offsetX, offsetY;
             header.onmousedown = (e) => {
-                if (isPinned || e.target.matches('button')) return;
+                if (isPinned || isMaximized || e.target.matches('button')) return;
                 
                 offsetX = e.clientX - win.offsetLeft;
                 offsetY = e.clientY - win.offsetTop;
