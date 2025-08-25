@@ -6,9 +6,8 @@
     <title>Organizador de Estudos Definitivo</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="anexo.ico" type="image/x-icon">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns/"></script>
+    <script src="libs/chart.js"></script>
+    <script src="libs/chartjs-adapter-date-fns.bundle.min.js"></script>
 
     <style>
         :root {
@@ -483,7 +482,8 @@
                 <h2>Passo 2: Adicione Anexos ao Tópico</h2>
                 <div id="attachment-selection-info" class="info-card"></div>
                 <p class="drop-info" style="text-align: center; color: #718096; margin-bottom: 15px;">Clique no botão abaixo para selecionar ou <strong>arraste e solte os arquivos nesta área</strong>.</p>
-                <button id="add-attachment-btn" disabled>Adicionar Anexo(s)</button>
+                <button id="add-attachment-btn" disabled>Adicionar Arquivo Local</button>
+                <button id="add-attachment-link-btn" disabled>Adicionar por Link da nuvem</button>
                 <h3>Anexos Adicionados:</h3>
                 <div id="attachments-list"></div>
             </div>
@@ -732,7 +732,7 @@
         function loadDirectoryHandle() { if (!db) return Promise.resolve(null); const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('rootDirectory'); return new Promise((resolve) => { request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
         function initAudioContext() { if (!audioContext && (window.AudioContext || window.webkitAudioContext)) try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { console.error("Web Audio API não é suportada.", e); } }
-        function playDefaultBeep() { if (!audioContext) return null; if (audioContext.state === 'suspended') audioContext.resume(); const gainNode = audioContext.createGain(); gainNode.connect(audioContext.destination); const oscillator = audioContext.createOscillator(); oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(880, audioContext.currentTime); oscillator.connect(gainNode); oscillator.start(); const interval = setInterval(() => { gainNode.gain.cancelScheduledValues(audioContext.currentTime); gainNode.gain.setValueAtTime(gainNode.gain.value, audioContext.currentTime); gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.1); gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5); }, 600); return { oscillator, gainNode, interval }; }
+        function playDefaultBeep() { if (!audioContext) return null; if (audioContext.state === 'suspended') audioContext.resume(); const gainNode = audioContext.createGain(); gainNode.connect(audioContext.destination); const oscillator = audioContext.createOscillator(); oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(880, audioContext.currentTime); oscillator.connect(gainNode); oscillator.start(); const interval = setInterval(() => { gainNode.gain.cancelScheduledValues(audioContext.currentTime); gainNode.gain.setValueAtTime(gainNode.gain.value, audioContext.currentTime); gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.5); }, 600); return { oscillator, gainNode, interval }; }
         function stopDefaultBeep(beep) { if (!beep) return; clearInterval(beep.interval); beep.oscillator.stop(); beep.oscillator.disconnect(); beep.gainNode.disconnect(); }
 
         function findItemPath(itemId, itemType) {
@@ -944,7 +944,7 @@
             else if (button.classList.contains('add-topic-btn')) openItemModal('topic', null, { folderId, subjectId: id });
             else if (button.classList.contains('edit-btn')) openItemModal(type, id, { folderId, subjectId });
             else if (button.classList.contains('delete-btn')) {
-                 if (!confirm('Mover este item e todo o seu conteúdo para a lixeira?')) return;
+                if (!confirm('Mover este item e todo o seu conteúdo para a lixeira?')) return;
                 
                 if (type === 'folder') {
                     const folderIndex = data.folders.findIndex(f => f.id == id);
@@ -997,6 +997,7 @@
         // --- LÓGICA DE ANEXOS ---
         const directoryStatusDiv = document.getElementById('directory-status');
         const addAttachmentBtn = document.getElementById('add-attachment-btn');
+        const addAttachmentLinkBtn = document.getElementById('add-attachment-link-btn');
         const attachmentSubjectSelect = document.getElementById('attachment-subject-select');
         const attachmentTopicSelect = document.getElementById('attachment-topic-select');
         const attachmentsListDiv = document.getElementById('attachments-list');
@@ -1004,7 +1005,21 @@
         const attachmentFlowStep2 = document.getElementById('attachment-flow-step2');
         const attachmentDropZone = document.getElementById('attachment-flow-step2');
         
-        function updateDirectoryStatus() { if (rootDirectoryHandle) { directoryStatusDiv.innerHTML = `<span>Pasta: <b>${rootDirectoryHandle.name}</b></span><button id="change-dir-btn">Trocar</button>`; addAttachmentBtn.disabled = false; addAttachmentBtn.textContent = 'Adicionar Anexo(s)'; document.getElementById('change-dir-btn').addEventListener('click', requestDirectoryPermission); } else { directoryStatusDiv.innerHTML = `<span>Nenhuma pasta configurada.</span><button id="select-dir-btn">Selecionar Pasta</button>`; addAttachmentBtn.disabled = true; addAttachmentBtn.textContent = 'Configure uma pasta'; document.getElementById('select-dir-btn').addEventListener('click', requestDirectoryPermission); } }
+        function updateDirectoryStatus() { 
+            if (rootDirectoryHandle) { 
+                directoryStatusDiv.innerHTML = `<span>Pasta: <b>${rootDirectoryHandle.name}</b></span><button id="change-dir-btn">Trocar</button>`; 
+                addAttachmentBtn.disabled = false; 
+                addAttachmentLinkBtn.disabled = false;
+                addAttachmentBtn.textContent = 'Adicionar Arquivo Local'; 
+                document.getElementById('change-dir-btn').addEventListener('click', requestDirectoryPermission); 
+            } else { 
+                directoryStatusDiv.innerHTML = `<span>Nenhuma pasta configurada.</span><button id="select-dir-btn">Selecionar Pasta</button>`; 
+                addAttachmentBtn.disabled = true; 
+                addAttachmentLinkBtn.disabled = true;
+                addAttachmentBtn.textContent = 'Configure uma pasta'; 
+                document.getElementById('select-dir-btn').addEventListener('click', requestDirectoryPermission); 
+            } 
+        }
         async function requestDirectoryPermission() { try { const handle = await window.showDirectoryPicker(); if ((await handle.queryPermission({ mode: 'readwrite' })) !== 'granted') if ((await handle.requestPermission({ mode: 'readwrite' })) !== 'granted') { alert("Permissão negada."); return; } rootDirectoryHandle = handle; await saveDirectoryHandle(handle); updateDirectoryStatus(); } catch (err) { console.error("Seleção cancelada:", err); } }
         function updateAttachmentSelectors() {
             attachmentSubjectSelect.innerHTML = '<option value="">Selecione uma Matéria...</option>';
@@ -1081,34 +1096,81 @@
         attachmentDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); attachmentDropZone.classList.remove('drop-zone-active'); });
         attachmentDropZone.addEventListener('drop', async (e) => { e.preventDefault(); e.stopPropagation(); attachmentDropZone.classList.remove('drop-zone-active'); const files = e.dataTransfer.files; if (files.length > 0) { await handleFileUploads(files); } });
         
+        // --- CÓDIGO CORRIGIDO ---
+        addAttachmentLinkBtn.addEventListener('click', () => {
+            const url = prompt("Por favor, cole o link de compartilhamento do seu anexo (Ex: Google Drive, Dropbox):");
+            if (!url || url.trim() === '') {
+                return; // Usuário cancelou ou não digitou nada
+            }
+
+            const name = prompt("Digite um nome para este link:", "Link Externo");
+            if (!name || name.trim() === '') {
+                return; // Usuário cancelou ou não digitou nada
+            }
+
+            const topicId = attachmentTopicSelect.value;
+            if (!topicId) {
+                alert("Por favor, selecione um assunto antes de adicionar um link.");
+                return;
+            }
+
+            const { folder, subject, topic } = findItemPath(topicId, 'topic');
+
+            if (topic) {
+                if (!topic.attachments) {
+                    topic.attachments = [];
+                }
+                // Adiciona o novo anexo do tipo 'url'
+                topic.attachments.push({
+                    id: getNextId('attachment'),
+                    type: 'url', 
+                    url: url,
+                    name: name
+                });
+                saveData(); // Salva os dados
+                renderAttachments(folder.id, subject.id, topic.id); // Atualiza a lista na tela
+            }
+        });
+
         async function renderAttachments(folderId, subjectId, topicId) {
             attachmentsListDiv.innerHTML = '';
             const { topic } = findItemPath(topicId, 'topic');
-            if (!topic.attachments || topic.attachments.length === 0) { attachmentsListDiv.innerHTML = '<p>Nenhum anexo.</p>'; return; }
+            if (!topic.attachments || topic.attachments.length === 0) {
+                attachmentsListDiv.innerHTML = '<p>Nenhum anexo.</p>';
+                return;
+            }
             
             const htmlPromises = topic.attachments.map(async (att) => {
-                if (att.type === 'filesystem' && rootDirectoryHandle) {
+                // Se o anexo for um link, cria um link <a> normal
+                if (att.type === 'url') {
+                    return `<div class="attachment-item">
+                                <a href="${att.url}" target="_blank">🔗 ${att.name}</a>
+                                <button class="delete-btn danger" data-id="${att.id}">Excluir</button>
+                            </div>`;
+                } 
+                // Se for um arquivo do sistema, mantém a lógica antiga
+                else if (att.type === 'filesystem' && rootDirectoryHandle) {
                     try {
                         await rootDirectoryHandle.getFileHandle(att.name);
                         return `<div class="attachment-item">
-                                    <a href="#" class="attachment-link" data-filename="${att.name}">${att.name}</a>
+                                    <a href="#" class="attachment-link" data-filename="${att.name}">📄 ${att.name}</a>
                                     <button class="delete-btn danger" data-id="${att.id}">Excluir</button>
                                 </div>`;
                     } catch (error) { 
                         return `<div class="attachment-item">
-                                    <a class="file-not-found" style="color:var(--danger-color); text-decoration:line-through;">${att.name} (Não encontrado)</a>
+                                    <a class="file-not-found" style="color:var(--danger-color); text-decoration:line-through;">📄 ${att.name} (Não encontrado)</a>
                                     <button class="delete-btn danger" data-id="${att.id}">Excluir</button>
                                 </div>`; 
                     }
                 }
-                return '';
+                return ''; // Retorna string vazia para tipos desconhecidos
             });
             
             attachmentsListDiv.innerHTML = (await Promise.all(htmlPromises)).join('');
             
             attachmentsListDiv.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    if (confirm('Excluir referência? O arquivo físico não será apagado.')) {
+                    if (confirm('Excluir referência do anexo?')) {
                         const { topic } = findItemPath(topicId, 'topic');
                         topic.attachments = topic.attachments.filter(a => a.id != btn.dataset.id);
                         saveData();
@@ -1117,6 +1179,7 @@
                 });
             });
         }
+        // --- FIM DO CÓDIGO CORRIGIDO ---
 
         // --- LÓGICA DO VISUALIZADOR DE ANEXOS ---
         let highestZ = 1600;
@@ -1438,6 +1501,10 @@
             });
             saveData();
             renderStudyHistoryLog();
+            // Nova linha para garantir que o gráfico seja atualizado automaticamente
+            if (document.querySelector('.tab-link[data-tab="graficos"]').classList.contains('active')) {
+                renderChart();
+            }
         }
         function playAlarm(message) {
             if (activeAlarmSound) return;
@@ -1552,8 +1619,8 @@
                 if(initialDuration <= 0) { alert("Por favor, insira uma duração válida."); return; }
                 timeLeft = initialDuration;
                 
-                if (currentTimerType === 'study' && !isCycleRunning && !timerSubjectSelect.value) {
-                    alert("Por favor, selecione uma matéria para a sessão de estudo."); return;
+                if (currentTimerType === 'study' && !isCycleRunning && (!timerSubjectSelect.value || !timerTopicSelect.value)) {
+                    alert("Por favor, selecione uma matéria e um assunto para a sessão de estudo."); return;
                 }
             }
             
@@ -1818,12 +1885,12 @@
             if (currentTimerType === 'study_cycle') {
                 const step = cycle.steps[currentCycleStepIndex];
                 if (step.restDuration > 0) {
-                                        currentTimerType = 'rest';
-                                        timerState = 'stopped';
-                                        const restSeconds = step.restDuration * 60;
-                                        cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
-                                        startTimer(restSeconds);
-                                        return;
+                                            currentTimerType = 'rest';
+                                            timerState = 'stopped';
+                                            const restSeconds = step.restDuration * 60;
+                                            cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
+                                            startTimer(restSeconds);
+                                            return;
                 }
             }
             
@@ -2104,7 +2171,7 @@
             const trashedItem = data.trash[index];
 
             if (button.classList.contains('restore-btn')) {
-                 if (trashedItem.type === 'folder') {
+                if (trashedItem.type === 'folder') {
                     data.folders.push(trashedItem.item);
                 } else if (trashedItem.type === 'subject') {
                     const parentFolder = data.folders.find(f => f.id == trashedItem.parentIds.folderId);
@@ -2177,15 +2244,15 @@
     });
     </script>
     <script>
-    if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').then(registration => {
-        console.log('Service Worker registrado com sucesso: ', registration);
-      }).catch(registrationError => {
-        console.log('Falha no registro do Service Worker: ', registrationError);
-      });
-    });
-  }
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').then(registration => {
+            console.log('Service Worker registrado com sucesso: ', registration);
+          }).catch(registrationError => {
+            console.log('Falha no registro do Service Worker: ', registrationError);
+          });
+        });
+      }
     </script>
 </body>
 </html>
