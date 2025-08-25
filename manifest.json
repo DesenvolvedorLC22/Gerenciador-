@@ -1,0 +1,26 @@
+{
+  "name": "Organizador de Estudos Definitivo",
+  "short_name": "Estudos",
+  "description": "Seu organizador de estudos pessoal para gerenciar pastas, matérias e anexos.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1a202c",
+  "theme_color": "#4a5568",
+  "icons": [
+    {
+      "src": "anexo.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
