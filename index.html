@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Organizador de Estudos Definitivo</title>
+    <link rel="manifest" href="manifest.json">
     <link rel="icon" href="anexo.ico" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -2174,6 +2175,17 @@
             document.body.innerHTML = '<h1>Navegador incompatível</h1><p>Use Chrome, Edge ou outro navegador compatível com as APIs do sistema de arquivos.</p>';
         }
     });
+    <script>
+    if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').then(registration => {
+        console.log('Service Worker registrado com sucesso: ', registration);
+      }).catch(registrationError => {
+        console.log('Falha no registro do Service Worker: ', registrationError);
+      });
+    });
+  }
+</script>
     </script>
 </body>
 </html>
