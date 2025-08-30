@@ -729,8 +729,8 @@
         let rootDirectoryHandle = null, db, alarmInterval = null, audioContext, activeAlarmSound = null;
         let timerInterval = null, timerState = 'stopped', timeLeft = 0, initialDuration = 0, currentTimerType = 'study';
         let isCycleRunning = false, currentCycleId, currentCycleRep, currentCycleStepIndex;
-        let currentChart = null;
-        let calendar = null; // Nova variável para o calendário
+        let currentChart = null; // Nova variável para o calendário
+        let calendar = null;
         
         // --- FUNÇÕES DE DADOS E INICIALIZAÇÃO ---
         function getNextId(type) { if (!data.nextIds[type]) data.nextIds[type] = 1; const id = data.nextIds[type]; data.nextIds[type]++; return id; }
@@ -1155,16 +1155,15 @@
         attachmentDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); attachmentDropZone.classList.remove('drop-zone-active'); });
         attachmentDropZone.addEventListener('drop', async (e) => { e.preventDefault(); e.stopPropagation(); attachmentDropZone.classList.remove('drop-zone-active'); const files = e.dataTransfer.files; if (files.length > 0) { await handleFileUploads(files); } });
         
-        // --- CÓDIGO CORRIGIDO ---
         addAttachmentLinkBtn.addEventListener('click', () => {
             const url = prompt("Por favor, cole o link de compartilhamento do seu anexo (Ex: Google Drive, Dropbox):");
             if (!url || url.trim() === '') {
-                return; // Usuário cancelou ou não digitou nada
+                return; 
             }
 
             const name = prompt("Digite um nome para este link:", "Link Externo");
             if (!name || name.trim() === '') {
-                return; // Usuário cancelou ou não digitou nada
+                return; 
             }
 
             const topicId = attachmentTopicSelect.value;
@@ -1179,15 +1178,14 @@
                 if (!topic.attachments) {
                     topic.attachments = [];
                 }
-                // Adiciona o novo anexo do tipo 'url'
                 topic.attachments.push({
                     id: getNextId('attachment'),
                     type: 'url', 
                     url: url,
                     name: name
                 });
-                saveData(); // Salva os dados
-                renderAttachments(folder.id, subject.id, topic.id); // Atualiza a lista na tela
+                saveData(); 
+                renderAttachments(folder.id, subject.id, topic.id); 
             }
         });
 
@@ -1200,14 +1198,12 @@
             }
             
             const htmlPromises = topic.attachments.map(async (att) => {
-                // Se o anexo for um link, cria um link <a> normal
                 if (att.type === 'url') {
                     return `<div class="attachment-item">
                                 <a href="${att.url}" target="_blank">🔗 ${att.name}</a>
                                 <button class="delete-btn danger" data-id="${att.id}">Excluir</button>
                             </div>`;
                 } 
-                // Se for um arquivo do sistema, mantém a lógica antiga
                 else if (att.type === 'filesystem' && rootDirectoryHandle) {
                     try {
                         await rootDirectoryHandle.getFileHandle(att.name);
@@ -1222,7 +1218,7 @@
                                 </div>`; 
                     }
                 }
-                return ''; // Retorna string vazia para tipos desconhecidos
+                return '';
             });
             
             attachmentsListDiv.innerHTML = (await Promise.all(htmlPromises)).join('');
@@ -1238,7 +1234,6 @@
                 });
             });
         }
-        // --- FIM DO CÓDIGO CORRIGIDO ---
 
         // --- LÓGICA DO VISUALIZADOR DE ANEXOS ---
         let highestZ = 1600;
@@ -1560,9 +1555,11 @@
             });
             saveData();
             renderStudyHistoryLog();
-            // Nova linha para garantir que o gráfico seja atualizado automaticamente
-            if (document.querySelector('.tab-link[data-tab="graficos"]').classList.contains('active')) {
-                renderChart();
+            
+            // CORREÇÃO #1: Invalida o gráfico existente para forçar a atualização na próxima vez que a aba for aberta.
+            if (currentChart) {
+                currentChart.destroy();
+                currentChart = null;
             }
         }
         function playAlarm(message) {
@@ -1596,11 +1593,8 @@
                         needsSave = true;
                     }
                     if (now >= endTime && !item.completed) {
-                        const durationSeconds = Math.round((endTime - startTime) / 1000);
-                        if (durationSeconds > 0) {
-                            const sessionType = item.type === 'activity' ? 'study_scheduled' : 'study_review';
-                            logSession(item.subjectId, item.topicId, durationSeconds, sessionType, endTime);
-                        }
+                        // CORREÇÃO #2: A linha que chamava logSession() foi removida daqui.
+                        // Agora, apenas marcamos como concluído.
                         item.completed = true;
                         needsSave = true;
                         needsRender = true;
