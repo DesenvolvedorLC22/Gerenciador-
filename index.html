@@ -8,6 +8,8 @@
     <link rel="icon" href="anexo.ico" type="image/x-icon">
     <script src="libs/chart.js"></script>
     <script src="libs/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/core/locales/pt-br.global.min.js'></script>
 
     <style>
         :root {
@@ -40,22 +42,22 @@
         .sidebar-nav a:hover, .sidebar-nav a.active { background-color: #2d3748; border-left: 4px solid var(--accent-color); }
         
         .sidebar-bottom-action {
-             padding: 15px 20px;
-             cursor: pointer;
-             text-align: center;
-             white-space: nowrap;
-             transition: background-color 0.2s;
+            padding: 15px 20px;
+            cursor: pointer;
+            text-align: center;
+            white-space: nowrap;
+            transition: background-color 0.2s;
         }
         .sidebar-bottom-action:hover {
             background-color: #2d3748;
         }
         .settings-icon { 
-             padding: 15px 20px; 
-             cursor: pointer; 
-             text-align: center; 
-             border-top: 1px solid #718096; 
-             white-space: nowrap;
-             transition: background-color 0.2s;
+            padding: 15px 20px; 
+            cursor: pointer; 
+            text-align: center; 
+            border-top: 1px solid #718096; 
+            white-space: nowrap;
+            transition: background-color 0.2s;
         }
         .settings-icon:hover {
             background-color: #2d3748;
@@ -70,7 +72,7 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         h1, h2, h3 { color: var(--header-bg); border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
         body.dark-theme h1, body.dark-theme h2, body.dark-theme h3 {
-             color: #cbd5e0;
+            color: #cbd5e0;
         }
         h3 { border-bottom-width: 1px; margin-top: 25px; margin-bottom: 15px; }
         h4 { border: none; padding: 0; margin: 0; }
@@ -78,8 +80,8 @@
         button:hover:not(:disabled) { filter: brightness(110%); }
         button:disabled { background-color: #a0aec0; cursor: not-allowed; }
         body.dark-theme button:disabled {
-             background-color: #4a5568;
-             color: #718096;
+            background-color: #4a5568;
+            color: #718096;
         }
         button.danger { background-color: var(--danger-color); }
         button.success { background-color: var(--success-color); }
@@ -273,10 +275,10 @@
             flex-direction: column;
         }
         .history-log-info .log-details {
-             font-size: 0.8em;
-             color: #718096;
+            font-size: 0.8em;
+            color: #718096;
         }
-         body.dark-theme .history-log-info .log-details {
+        body.dark-theme .history-log-info .log-details {
             color: #a0aec0;
         }
 
@@ -376,9 +378,9 @@
             box-sizing: border-box;
         }
         .attachment-viewer-window .viewer-body div {
-             color: var(--text-color);
-             background-color: var(--secondary-bg);
-             padding: 20px;
+            color: var(--text-color);
+            background-color: var(--secondary-bg);
+            padding: 20px;
         }
         #viewer-taskbar {
             position: fixed;
@@ -428,7 +430,41 @@
             margin-left: 0;  /* Garante o alinhamento à esquerda */
             margin-right: auto; /* Garante o alinhamento à esquerda */
         }
-    
+
+        /* NOVOS ESTILOS PARA O CALENDÁRIO */
+        .fc-event {
+            cursor: pointer;
+            font-size: 0.85em;
+            border: 1px solid rgba(0,0,0,0.2);
+            padding: 2px 4px;
+        }
+        .fc-event-main-frame {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        body.dark-theme .fc .fc-button-primary {
+            background-color: var(--secondary-bg);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        body.dark-theme .fc .fc-button-primary:hover {
+             filter: brightness(120%);
+        }
+        body.dark-theme .fc .fc-button-primary:not(:disabled).fc-button-active,
+        body.dark-theme .fc .fc-button-primary:not(:disabled):active {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+        body.dark-theme .fc-toolbar-title { color: var(--text-color); }
+        body.dark-theme .fc-daygrid-day-number, body.dark-theme .fc-col-header-cell-cushion { color: var(--text-color); }
+        body.dark-theme .fc-daygrid-day.fc-day-today { background-color: rgba(66, 153, 225, 0.15); }
+        body.dark-theme .fc-list-day-cushion, body.dark-theme .fc-list-table, body.dark-theme .fc-theme-standard .fc-list {
+            background-color: var(--secondary-bg);
+        }
+        body.dark-theme .fc-theme-standard td, body.dark-theme .fc-theme-standard th {
+            border-color: var(--border-color);
+        }
+        
     </style>
 </head>
 <body>
@@ -447,6 +483,7 @@
                 <a href="#" class="tab-link" data-tab="schedules">Agendamentos</a>
                 <a href="#" class="tab-link" data-tab="cronometro">Cronômetro</a>
                 <a href="#" class="tab-link" data-tab="graficos">Gráficos</a>
+                <a href="#" class="tab-link" data-tab="calendario">Calendário</a>
             </nav>
         </div>
         <div>
@@ -465,7 +502,7 @@
         </div>
         
         <div id="attachments-tab" class="tab-content">
-             <h1>Anexos</h1>
+            <h1>Anexos</h1>
             <div id="directory-config">
                 <h2>Pasta de Anexos</h2>
                 <p>Para anexar arquivos, o programa precisa de permissão para acessar uma pasta no seu computador.</p>
@@ -554,7 +591,7 @@
                         <option value="pie">Pizza (Proporção)</option>
                     </select>
                 </div>
-                 <div class="form-group">
+                <div class="form-group">
                     <label for="chart-data-select">Analisar Dados de:</label>
                     <select id="chart-data-select">
                         <option value="subject">Estudo por Matéria</option>
@@ -568,6 +605,12 @@
                 <canvas id="study-chart"></canvas>
             </div>
         </div>
+
+        <div id="calendario-tab" class="tab-content">
+            <h1>Calendário</h1>
+            <div id="calendar" class="card"></div>
+        </div>
+
     </main>
     
     <div id="item-modal" class="modal">
@@ -687,6 +730,7 @@
         let timerInterval = null, timerState = 'stopped', timeLeft = 0, initialDuration = 0, currentTimerType = 'study';
         let isCycleRunning = false, currentCycleId, currentCycleRep, currentCycleStepIndex;
         let currentChart = null;
+        let calendar = null; // Nova variável para o calendário
         
         // --- FUNÇÕES DE DADOS E INICIALIZAÇÃO ---
         function getNextId(type) { if (!data.nextIds[type]) data.nextIds[type] = 1; const id = data.nextIds[type]; data.nextIds[type]++; return id; }
@@ -776,6 +820,12 @@
                 } else {
                     localStorage.setItem('theme', 'light');
                 }
+                // Recarrega o calendário para aplicar as cores do novo tema
+                if (calendar) {
+                    calendar.destroy();
+                    calendar = null;
+                    initializeCalendar();
+                }
             });
         }
         
@@ -800,6 +850,15 @@
                     renderStudyHistoryLog();
                 }
                 if (tabId === 'graficos') renderChart();
+
+                // Lógica para inicializar ou atualizar o calendário
+                if (tabId === 'calendario') {
+                    if (!calendar) {
+                        initializeCalendar();
+                    } else {
+                        calendar.refetchEvents();
+                    }
+                }
             });
         });
         function openModal(modalId) { 
@@ -1225,9 +1284,9 @@
                 contentHTML = `<pre>Carregando...</pre>`;
             } else {
                 contentHTML = `<div>
-                                   <p>Não é possível pré-visualizar este tipo de arquivo.</p>
-                                   <a href="${objectUrl}" download="${filename}"><button>Baixar ${filename}</button></a>
-                               </div>`;
+                                    <p>Não é possível pré-visualizar este tipo de arquivo.</p>
+                                    <a href="${objectUrl}" download="${filename}"><button>Baixar ${filename}</button></a>
+                                </div>`;
             }
 
             viewerWindow.innerHTML = `
@@ -1531,8 +1590,8 @@
                     const startTime = new Date(item.startTime);
                     const endTime = new Date(item.endTime);
                     if (now >= startTime && !item.notified) {
-                         const path = findItemPath(item.topicId, 'topic');
-                         playAlarm(`Hora de iniciar: ${path.topic?.name || 'Atividade Agendada'}`);
+                        const path = findItemPath(item.topicId, 'topic');
+                        playAlarm(`Hora de iniciar: ${path.topic?.name || 'Atividade Agendada'}`);
                         item.notified = true;
                         needsSave = true;
                     }
@@ -1885,12 +1944,12 @@
             if (currentTimerType === 'study_cycle') {
                 const step = cycle.steps[currentCycleStepIndex];
                 if (step.restDuration > 0) {
-                                            currentTimerType = 'rest';
-                                            timerState = 'stopped';
-                                            const restSeconds = step.restDuration * 60;
-                                            cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
-                                            startTimer(restSeconds);
-                                            return;
+                                                currentTimerType = 'rest';
+                                                timerState = 'stopped';
+                                                const restSeconds = step.restDuration * 60;
+                                                cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
+                                                startTimer(restSeconds);
+                                                return;
                 }
             }
             
@@ -1954,7 +2013,7 @@
         }
         
         studyHistoryLogDiv.addEventListener('click', (e) => {
-             if (e.target.classList.contains('delete-history-btn')) {
+            if (e.target.classList.contains('delete-history-btn')) {
                 const logId = parseInt(e.target.dataset.id, 10);
                 if (confirm('Deseja mover este registro para a lixeira?')) {
                     const logIndex = data.studyHistory.findIndex(log => log.id === logId);
@@ -2043,11 +2102,11 @@
 
                 if (chartType === 'line') {
                     const dailyTotals = contextualHistory.reduce((acc, h) => {
-                         const day = h.date.split('T')[0];
-                         if (!acc[day]) acc[day] = { study: 0, rest: 0 };
-                         if (h.type.startsWith('study')) acc[day].study += h.duration;
-                         else if (h.type === 'rest') acc[day].rest += h.duration;
-                         return acc;
+                        const day = h.date.split('T')[0];
+                        if (!acc[day]) acc[day] = { study: 0, rest: 0 };
+                        if (h.type.startsWith('study')) acc[day].study += h.duration;
+                        else if (h.type === 'rest') acc[day].rest += h.duration;
+                        return acc;
                     }, {});
                     const sortedDays = Object.keys(dailyTotals).sort();
                     chartConfig = { type: 'line', data: { labels: sortedDays, datasets: [ { label: 'Estudo (minutos)', data: sortedDays.map(day => (dailyTotals[day].study / 60).toFixed(2)), borderColor: vars.accentColor, tension: 0.1, fill: false }, { label: 'Descanso (minutos)', data: sortedDays.map(day => (dailyTotals[day].rest / 60).toFixed(2)), borderColor: vars.successColor, tension: 0.1, fill: false } ] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Evolução de Estudo vs. Descanso por Dia' } }, scales: { x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy' } }, y: { beginAtZero: true, title: { display: true, text: 'Minutos' } } } } };
@@ -2066,24 +2125,24 @@
                 const validStudyHistory = validHistory.filter(h => h.type.startsWith('study') && h[key]);
 
                 if (validStudyHistory.length === 0) {
-                        container.innerHTML = `<p style='text-align:center; padding: 40px;'>Sem dados de estudo para a análise de '${dataType === 'subject' ? 'Matérias' : 'Assuntos'}'.</p>`;
-                        return;
+                    container.innerHTML = `<p style='text-align:center; padding: 40px;'>Sem dados de estudo para a análise de '${dataType === 'subject' ? 'Matérias' : 'Assuntos'}'.</p>`;
+                    return;
                 }
 
                 if (chartType === 'line') {
-                        const dailyTotals = validStudyHistory.reduce((acc, h) => {
-                             const day = h.date.split('T')[0];
-                             if (!acc[day]) acc[day] = 0;
-                             acc[day] += h.duration;
-                             return acc;
-                        }, {});
-                        const sortedDays = Object.keys(dailyTotals).sort();
-                        chartConfig = { type: 'line', data: { labels: sortedDays, datasets: [{ label: 'Total de Estudo (minutos)', data: sortedDays.map(day => (dailyTotals[day] / 60).toFixed(2)), borderColor: vars.accentColor, tension: 0.1 }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Evolução Total de Estudo por Dia' } }, scales: { x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy' } }, y: { beginAtZero: true, title: { display: true, text: 'Minutos' } } } } };
+                    const dailyTotals = validStudyHistory.reduce((acc, h) => {
+                        const day = h.date.split('T')[0];
+                        if (!acc[day]) acc[day] = 0;
+                        acc[day] += h.duration;
+                        return acc;
+                    }, {});
+                    const sortedDays = Object.keys(dailyTotals).sort();
+                    chartConfig = { type: 'line', data: { labels: sortedDays, datasets: [{ label: 'Total de Estudo (minutos)', data: sortedDays.map(day => (dailyTotals[day] / 60).toFixed(2)), borderColor: vars.accentColor, tension: 0.1 }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Evolução Total de Estudo por Dia' } }, scales: { x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy' } }, y: { beginAtZero: true, title: { display: true, text: 'Minutos' } } } } };
                 } else { 
                     const aggregated = validStudyHistory.reduce((acc, h) => {
                         if(h[key]) {
-                           if (!acc[h[key]]) acc[h[key]] = 0;
-                           acc[h[key]] += h.duration;
+                            if (!acc[h[key]]) acc[h[key]] = 0;
+                            acc[h[key]] += h.duration;
                         }
                         return acc;
                     }, {});
@@ -2106,6 +2165,86 @@
         chartTypeSelect.addEventListener('change', renderChart);
         chartDataSelect.addEventListener('change', renderChart);
         document.getElementById('refresh-chart-btn').addEventListener('click', renderChart);
+
+        // --- NOVA LÓGICA DO CALENDÁRIO ---
+        function initializeCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            if (!calendarEl) return;
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                locale: 'pt-br',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,dayGridWeek,dayGridDay,listYear' // Adiciona os filtros de visualização
+                },
+                buttonText: {
+                    today:    'Hoje',
+                    month:    'Mês',
+                    week:     'Semana',
+                    day:      'Dia',
+                    list:     'Lista'
+                },
+                initialView: 'dayGridMonth',
+                events: getCalendarEvents, // Usa uma função para buscar os eventos
+                eventDidMount: function(info) {
+                    // Adiciona um tooltip (dica de ferramenta) com as informações detalhadas
+                    if (info.event.extendedProps.description) {
+                         info.el.title = info.event.extendedProps.description;
+                    }
+                }
+            });
+            calendar.render();
+        }
+
+        function getCalendarEvents(fetchInfo, successCallback, failureCallback) {
+            try {
+                const events = [];
+
+                // 1. Agendamentos (Atividades e Revisões)
+                [...data.schedules.activities, ...data.schedules.reviews].forEach(item => {
+                    if (!item.subjectId || !item.topicId) return;
+                    const path = findItemPath(item.topicId, 'topic');
+                    if (!path.folder || !path.subject || !path.topic) return;
+
+                    events.push({
+                        title: `${item.type === 'review' ? 'Revisão' : 'Estudo'}: ${path.topic.name}`,
+                        start: item.startTime,
+                        end: item.endTime,
+                        backgroundColor: path.subject.color || '#4299e1',
+                        borderColor: path.subject.color || '#4299e1',
+                        extendedProps: {
+                            description: `[Agendado]\nPasta: ${path.folder.name}\nMatéria: ${path.subject.name}\nConteúdo: ${path.topic.name}\nInício: ${new Date(item.startTime).toLocaleTimeString('pt-BR')}\nFim: ${new Date(item.endTime).toLocaleTimeString('pt-BR')}`
+                        }
+                    });
+                });
+
+                // 2. Histórico de Estudos (Sessões concluídas)
+                data.studyHistory.forEach(log => {
+                    if (log.type === 'rest' || !log.topicId) return;
+                    const path = findItemPath(log.topicId, 'topic');
+                    if (!path.folder || !path.subject || !path.topic) return;
+
+                    const endDate = new Date(log.date);
+                    const startDate = new Date(endDate.getTime() - log.duration * 1000);
+
+                    events.push({
+                        title: `Concluído: ${path.topic.name}`,
+                        start: startDate.toISOString(),
+                        end: endDate.toISOString(),
+                        backgroundColor: path.subject.color || '#48bb78',
+                        borderColor: path.subject.color || '#48bb78',
+                        extendedProps: {
+                            description: `[Concluído]\nPasta: ${path.folder.name}\nMatéria: ${path.subject.name}\nConteúdo: ${path.topic.name}\nInício: ${startDate.toLocaleTimeString('pt-BR')}\nFim: ${endDate.toLocaleTimeString('pt-BR')}`
+                        }
+                    });
+                });
+
+                successCallback(events);
+            } catch (error) {
+                console.error("Erro ao buscar eventos para o calendário:", error);
+                if (failureCallback) failureCallback(error);
+            }
+        }
         
         // --- LÓGICA DA LIXEIRA ---
         function moveToTrash(item, type, parentIds = {}) {
@@ -2184,7 +2323,7 @@
                 } else if (trashedItem.type === 'topic') {
                     const parentSubject = data.folders.flatMap(f => f.subjects).find(s => s.id == trashedItem.parentIds.subjectId);
                     if(parentSubject) {
-                         parentSubject.topics.push(trashedItem.item);
+                        parentSubject.topics.push(trashedItem.item);
                     } else {
                         alert("A matéria original não foi encontrada. O item será restaurado em uma nova estrutura.");
                         data.folders.push({id: getNextId('folder'), name: "Pasta Restaurada", color: "#cccccc", subjects: [{id: getNextId('subject'), name: "Matéria Restaurada", color:"#cccccc", topics: [trashedItem.item]}]});
@@ -2244,15 +2383,15 @@
     });
     </script>
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').then(registration => {
-            console.log('Service Worker registrado com sucesso: ', registration);
-          }).catch(registrationError => {
-            console.log('Falha no registro do Service Worker: ', registrationError);
-          });
-        });
-      }
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(registration => {
+                    console.log('Service Worker registrado com sucesso: ', registration);
+                }).catch(registrationError => {
+                    console.log('Falha no registro do Service Worker: ', registrationError);
+                });
+            });
+        }
     </script>
 </body>
 </html>
