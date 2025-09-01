@@ -208,7 +208,7 @@
         .workspace-canvas { position: relative; flex-grow: 1; overflow: auto; padding: 20px; }
         .flashcard {
             position: absolute;
-            width: 400px;
+            width: 350px;
             min-height: 250px;
             padding: 10px;
             border-radius: 8px;
@@ -297,7 +297,7 @@
             display: flex;
             flex-direction: column;
             resize: both;
-            overflow: hidden; /* Importante para o 'resize' funcionar bem */
+            overflow: hidden; 
             transition: width 0.3s, height 0.3s, top 0.3s, left 0.3s;
         }
         .attachment-viewer-window.minimized {
@@ -394,10 +394,33 @@
             align-items: center;
             padding: 0 10px;
             gap: 8px;
-            overflow-x: auto;
             border-top: 1px solid var(--border-color);
-            transition: left 0.3s ease, width 0.3s ease;
+            transition: left 0.3s ease, width 0.3s ease, transform 0.3s ease;
         }
+        
+        /* MUDANÇA: Estilos corrigidos para ocultar e mostrar a barra de tarefas */
+        #taskbar-controls {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+        }
+        #taskbar-toggle-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 0 5px;
+            line-height: 1;
+            transform: rotate(90deg); /* Seta para baixo */
+        }
+        #viewer-taskbar.hidden {
+            transform: translateY(calc(100% - 5px)); /* Deixa 5px visível */
+        }
+        #viewer-taskbar.hidden:hover {
+            transform: translateY(0); /* Mostra ao passar o mouse */
+        }
+        
         body:has(.sidebar.collapsed) #viewer-taskbar {
             left: 0;
             width: 100%;
@@ -424,14 +447,13 @@
             filter: brightness(120%);
         }
 
-        /* Adicione este código para ajustar a largura de TODOS os campos de formulário */
         .form-group {
-            max-width: 435px; /* <-- Altere este valor para o tamanho máximo desejado */
-            margin-left: 0;  /* Garante o alinhamento à esquerda */
-            margin-right: auto; /* Garante o alinhamento à esquerda */
+            max-width: 435px; 
+            margin-left: 0; 
+            margin-right: auto; 
         }
 
-        /* NOVOS ESTILOS PARA O CALENDÁRIO */
+        /* ESTILOS PARA O CALENDÁRIO */
         .fc-event {
             cursor: pointer;
             font-size: 0.85em;
@@ -708,7 +730,12 @@
         </div>
     </div>
     
-    <div id="viewer-taskbar"></div>
+    <div id="viewer-taskbar">
+        <div id="taskbar-items-container" style="display: flex; gap: 8px; flex-grow: 1; overflow-x: auto;"></div>
+        <div id="taskbar-controls">
+            <button id="taskbar-toggle-btn" title="Ocultar Barra de Tarefas">🔽</button>
+        </div>
+    </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -722,14 +749,14 @@
             folders: [], flashcardAreas: [],
             schedules: { activities: [], reviews: [] },
             cycles: [], studyHistory: [],
-            trash: [], // Lixeira
+            trash: [],
             nextIds: { folder: 1, subject: 1, topic: 1, attachment: 1, flashcardArea: 1, flashcard: 1, schedule: 1, cycle: 1, cycleItem: 1, history: 1 }
         };
         
         let rootDirectoryHandle = null, db, alarmInterval = null, audioContext, activeAlarmSound = null;
         let timerInterval = null, timerState = 'stopped', timeLeft = 0, initialDuration = 0, currentTimerType = 'study';
         let isCycleRunning = false, currentCycleId, currentCycleRep, currentCycleStepIndex;
-        let currentChart = null; // Nova variável para o calendário
+        let currentChart = null; 
         let calendar = null;
         
         // --- FUNÇÕES DE DADOS E INICIALIZAÇÃO ---
@@ -758,6 +785,7 @@
                 startAlarmSystem();
                 setupSidebarToggle();
                 setupThemeToggle();
+                setupTaskbarToggle(); 
             } catch (error) { console.error("Falha na inicialização:", error); alert("Ocorreu um erro. Verifique o console (F12).") }
         }
         
@@ -820,12 +848,22 @@
                 } else {
                     localStorage.setItem('theme', 'light');
                 }
-                // Recarrega o calendário para aplicar as cores do novo tema
                 if (calendar) {
                     calendar.destroy();
                     calendar = null;
                     initializeCalendar();
                 }
+            });
+        }
+
+        // MUDANÇA: Função corrigida para controlar a visibilidade da barra de tarefas
+        function setupTaskbarToggle() {
+            const taskbar = document.getElementById('viewer-taskbar');
+            const toggleBtn = document.getElementById('taskbar-toggle-btn');
+            toggleBtn.addEventListener('click', () => {
+                const isHidden = taskbar.classList.toggle('hidden');
+                toggleBtn.style.transform = isHidden ? 'rotate(-90deg)' : 'rotate(90deg)';
+                toggleBtn.title = isHidden ? 'Mostrar Barra de Tarefas' : 'Ocultar Barra de Tarefas';
             });
         }
         
@@ -851,7 +889,6 @@
                 }
                 if (tabId === 'graficos') renderChart();
 
-                // Lógica para inicializar ou atualizar o calendário
                 if (tabId === 'calendario') {
                     if (!calendar) {
                         initializeCalendar();
@@ -1299,18 +1336,24 @@
 
             document.body.appendChild(viewerWindow);
 
-            const taskbar = document.getElementById('viewer-taskbar');
+            const taskbarItemsContainer = document.getElementById('taskbar-items-container');
             const taskbarItem = document.createElement('div');
             taskbarItem.className = 'taskbar-item';
             taskbarItem.textContent = filename;
             taskbarItem.dataset.viewerId = viewerWindow.id;
-            taskbar.appendChild(taskbarItem);
+            taskbarItemsContainer.appendChild(taskbarItem);
 
+            // MUDANÇA: Lógica de clique para restaurar E minimizar a janela
             taskbarItem.addEventListener('click', () => {
-                if (viewerWindow.style.display === 'none') {
-                    viewerWindow.style.display = 'flex';
+                const win = document.getElementById(taskbarItem.dataset.viewerId);
+                if (win.style.display === 'none') {
+                    win.style.display = 'flex'; // Restaura se estiver oculta
+                } else {
+                    if (win.style.zIndex == highestZ) { // Só minimiza se for a janela ativa
+                        win.style.display = 'none';
+                    }
                 }
-                viewerWindow.style.zIndex = ++highestZ;
+                win.style.zIndex = ++highestZ; // Traz para frente ao ser clicada
             });
 
             if (file.type.startsWith('text/')) {
@@ -1556,7 +1599,6 @@
             saveData();
             renderStudyHistoryLog();
             
-            // CORREÇÃO #1: Invalida o gráfico existente para forçar a atualização na próxima vez que a aba for aberta.
             if (currentChart) {
                 currentChart.destroy();
                 currentChart = null;
@@ -1593,8 +1635,6 @@
                         needsSave = true;
                     }
                     if (now >= endTime && !item.completed) {
-                        // CORREÇÃO #2: A linha que chamava logSession() foi removida daqui.
-                        // Agora, apenas marcamos como concluído.
                         item.completed = true;
                         needsSave = true;
                         needsRender = true;
@@ -2169,7 +2209,7 @@
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,dayGridWeek,dayGridDay,listYear' // Adiciona os filtros de visualização
+                    right: 'dayGridMonth,dayGridWeek,dayGridDay,listYear' 
                 },
                 buttonText: {
                     today:    'Hoje',
@@ -2179,9 +2219,8 @@
                     list:     'Lista'
                 },
                 initialView: 'dayGridMonth',
-                events: getCalendarEvents, // Usa uma função para buscar os eventos
+                events: getCalendarEvents, 
                 eventDidMount: function(info) {
-                    // Adiciona um tooltip (dica de ferramenta) com as informações detalhadas
                     if (info.event.extendedProps.description) {
                          info.el.title = info.event.extendedProps.description;
                     }
@@ -2194,7 +2233,6 @@
             try {
                 const events = [];
 
-                // 1. Agendamentos (Atividades e Revisões)
                 [...data.schedules.activities, ...data.schedules.reviews].forEach(item => {
                     if (!item.subjectId || !item.topicId) return;
                     const path = findItemPath(item.topicId, 'topic');
@@ -2212,7 +2250,6 @@
                     });
                 });
 
-                // 2. Histórico de Estudos (Sessões concluídas)
                 data.studyHistory.forEach(log => {
                     if (log.type === 'rest' || !log.topicId) return;
                     const path = findItemPath(log.topicId, 'topic');
@@ -2389,8 +2426,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
