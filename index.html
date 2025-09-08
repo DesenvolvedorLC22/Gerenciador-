@@ -12,7 +12,6 @@
     <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/core/locales/pt-br.global.min.js'></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
-        /* MUDANÇA: Estilos de Drag and Drop substituídos pelos da biblioteca Sortable.js */
         .drag-handle {
             cursor: grab;
             color: var(--text-color);
@@ -117,7 +116,36 @@
             color: var(--text-color);
             border-color: #4a5568;
         }
-        .folder-item, .subject-item, .topic-item { background-color: var(--secondary-bg); padding: 15px; border: 1px solid var(--border-color); border-radius: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* MUDANÇA DE LÓGICA DE EXIBIÇÃO */
+        .folder-item, .subject-item {
+            background-color: var(--secondary-bg);
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column; /* Organiza o header e o content-container verticalmente */
+            align-items: stretch; /* Faz o content-container ocupar toda a largura */
+        }
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        .topic-item {
+            background-color: var(--secondary-bg);
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        /* FIM DA MUDANÇA */
+
         .folder-item { border-left-width: 5px; }
         .subject-item { margin-left: 25px; border-left-width: 5px; }
         .topic-item { margin-left: 50px; border-left-width: 5px; }
@@ -775,7 +803,6 @@
             nextIds: { folder: 1, subject: 1, topic: 1, attachment: 1, flashcardArea: 1, flashcard: 1, schedule: 1, cycle: 1, cycleItem: 1, history: 1 }
         };
         
-        // MUDANÇA: Adicionado ícone de arraste para ser usado na UI
         const dragHandleIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>`;
         
         let rootDirectoryHandle = null, db, alarmInterval = null, audioContext, activeAlarmSound = null;
@@ -807,7 +834,7 @@
                 loadData();
                 updateDirectoryStatus();
                 renderAll();
-                initSortable(); // MUDANÇA: Chamada da nova função
+                initSortable();
                 startAlarmSystem();
                 setupSidebarToggle();
                 setupThemeToggle();
@@ -1020,7 +1047,6 @@
 
         function createItemElement(type, item, parentIds = {}) {
             const el = document.createElement('div');
-            // MUDANÇA: Atributos de drag removidos. A classe agora vem do tipo do item.
             el.dataset.id = item.id;
             el.dataset.type = type;
             el.className = `${type}-item`;
@@ -1035,8 +1061,25 @@
             if (type === 'folder') addBtn = `<button class="add-subject-btn">+ Matéria</button>`;
             if (type === 'subject') addBtn = `<button class="add-topic-btn">+ Assunto</button>`;
             
-            // MUDANÇA: Adicionado o dragHandle ao HTML do elemento
-            el.innerHTML = `<div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">${toggleBtn}${dragHandle}<div style="width: 18px; height: 18px; border-radius: 4px; margin: 0 12px; border: 1px solid #ccc; flex-shrink: 0; background-color:${item.color};"></div><div style="min-width:0;"><strong>${item.name}</strong>${item.description?`<p style="font-size: 0.9em; color: #718096; margin-top: 5px; white-space: pre-wrap; word-break: break-word;">${item.description}</p>`:''}</div></div><div class="action-buttons" style="flex-shrink:0; margin-left: 10px;">${addBtn}<button class="edit-btn">Editar</button><button class="duplicate-btn">Duplicar</button><button class="delete-btn danger">Excluir</button></div>`;
+            // MUDANÇA DE LÓGICA DE EXIBIÇÃO: Agrupado o cabeçalho em uma div .item-header
+            el.innerHTML = `
+                <div class="item-header">
+                    <div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">
+                        ${toggleBtn}
+                        ${dragHandle}
+                        <div style="width: 18px; height: 18px; border-radius: 4px; margin: 0 12px; border: 1px solid #ccc; flex-shrink: 0; background-color:${item.color};"></div>
+                        <div style="min-width:0;">
+                            <strong>${item.name}</strong>
+                            ${item.description?`<p style="font-size: 0.9em; color: #718096; margin-top: 5px; white-space: pre-wrap; word-break: break-word;">${item.description}</p>`:''}
+                        </div>
+                    </div>
+                    <div class="action-buttons" style="flex-shrink:0; margin-left: 10px;">
+                        ${addBtn}
+                        <button class="edit-btn">Editar</button>
+                        <button class="duplicate-btn">Duplicar</button>
+                        <button class="delete-btn danger">Excluir</button>
+                    </div>
+                </div>`;
             return el;
         }
         
@@ -1472,13 +1515,24 @@
             flashcardAreasContainer.innerHTML = '';
             data.flashcardAreas.forEach(area => {
                 const areaEl = document.createElement('div');
-                // MUDANÇA: atributo draggable removido
                 areaEl.className = 'flashcard-area-card'; 
                 areaEl.dataset.id = area.id; 
                 areaEl.dataset.type = 'flashcard_area';
                 areaEl.style.borderTop = `5px solid ${area.color}`;
                 // MUDANÇA: Adicionado o dragHandle
-                areaEl.innerHTML = `<div><h3>${area.name}</h3><p>${area.cards.length} cartão(s)</p></div><div class="action-buttons"><span class="drag-handle">${dragHandleIconSVG}</span><button class="edit-btn">Editar</button><button class="duplicate-btn">Duplicar</button><button class="delete-btn danger">Excluir</button></div>`;
+                areaEl.innerHTML = `
+                    <div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">
+                        <span class="drag-handle">${dragHandleIconSVG}</span>
+                        <div>
+                            <h3>${area.name}</h3>
+                            <p>${area.cards.length} cartão(s)</p>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="edit-btn">Editar</button>
+                        <button class="duplicate-btn">Duplicar</button>
+                        <button class="delete-btn danger">Excluir</button>
+                    </div>`;
                 areaEl.addEventListener('click', (e) => { if (!e.target.closest('button, .drag-handle')) openWorkspace(area.id); });
                 flashcardAreasContainer.appendChild(areaEl);
             });
@@ -2460,7 +2514,7 @@
             reader.readAsText(file); e.target.value = '';
         });
 
-        // MUDANÇA: Lógica de arrastar e soltar substituída por Sortable.js
+        // MUDANÇA: Lógica de arrastar e soltar com Sortable.js
         function initSortable() {
             // Arrastar Áreas de Flashcard
             new Sortable(document.getElementById('flashcard-areas-container'), {
@@ -2470,6 +2524,7 @@
                     const item = data.flashcardAreas.splice(evt.oldIndex, 1)[0];
                     data.flashcardAreas.splice(evt.newIndex, 0, item);
                     saveData();
+                    // Não precisa re-renderizar tudo, a lib já atualiza o DOM
                 }
             });
 
@@ -2488,6 +2543,7 @@
             document.querySelectorAll('.content-container[data-type="folder"]').forEach(container => {
                 const folderId = parseInt(container.dataset.parentId, 10);
                 new Sortable(container, {
+                    group: 'subjects', // Permite mover matérias entre pastas (opcional)
                     animation: 150,
                     handle: '.drag-handle',
                     onEnd: (evt) => {
@@ -2505,6 +2561,7 @@
             document.querySelectorAll('.content-container[data-type="subject"]').forEach(container => {
                 const subjectId = parseInt(container.dataset.parentId, 10);
                 new Sortable(container, {
+                    group: 'topics', // Permite mover assuntos entre matérias (opcional)
                     animation: 150,
                     handle: '.drag-handle',
                     onEnd: (evt) => {
