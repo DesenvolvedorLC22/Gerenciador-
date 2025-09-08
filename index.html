@@ -11,6 +11,18 @@
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/core/locales/pt-br.global.min.js'></script>
     <style>
+        /* INÍCIO DA ALTERAÇÃO 1: Estilos para Drag Handle */
+        .drag-handle {
+            cursor: grab;
+            font-size: 1.2em;
+            margin-right: 10px;
+            color: #718096;
+            transition: color 0.2s;
+            user-select: none;
+        }
+        .drag-handle:hover {
+            color: var(--accent-color);
+        }
         .dragging {
             opacity: 0.5;
             background: #e2e8f0;
@@ -108,7 +120,7 @@
             color: var(--text-color);
             border-color: #4a5568;
         }
-        .folder-item, .subject-item, .topic-item { background-color: var(--secondary-bg); padding: 15px; border: 1px solid var(--border-color); border-radius: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: grab; }
+        .folder-item, .subject-item, .topic-item { background-color: var(--secondary-bg); padding: 15px; border: 1px solid var(--border-color); border-radius: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .folder-item { border-left-width: 5px; }
         .subject-item { margin-left: 25px; border-left-width: 5px; }
         .topic-item { margin-left: 50px; border-left-width: 5px; }
@@ -185,7 +197,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            cursor: grab;
+            cursor: default; /* Apenas o handle será o cursor de 'grab' */
             transition: box-shadow 0.2s, transform 0.2s;
         }
         .flashcard-area-card:hover {
@@ -410,7 +422,6 @@
             transition: left 0.3s ease, width 0.3s ease, transform 0.3s ease;
         }
         
-        /* MUDANÇA: Estilos corrigidos para ocultar e mostrar a barra de tarefas */
         #taskbar-controls {
             margin-left: auto;
             display: flex;
@@ -465,7 +476,6 @@
             margin-right: auto; 
         }
 
-        /* ESTILOS PARA O CALENDÁRIO */
         .fc-event {
             cursor: pointer;
             font-size: 0.85em;
@@ -531,7 +541,7 @@
 
         <div id="subjects-tab" class="tab-content active">
             <h1>Pastas, Matérias e Assuntos</h1>
-            <p>Arraste e solte os itens para reordená-los.</p>
+            <p>Clique no ícone de ::: para arrastar e reordenar os itens.</p>
             <button id="add-folder-btn">Adicionar Pasta</button>
             <div id="folders-list" class="mt-4"></div>
         </div>
@@ -563,7 +573,7 @@
         
         <div id="flashcards-tab" class="tab-content">
             <h1>Flashcards</h1>
-            <p>Arraste e solte as áreas para reordená-las.</p>
+            <p>Clique no ícone de ::: para arrastar e reordenar as áreas.</p>
             <button id="add-flashcard-area-btn">Adicionar Área de Flashcards</button>
             <div id="flashcard-areas-container" class="mt-4"></div>
         </div>
@@ -635,9 +645,9 @@
                         <option value="rest">Estudo vs. Descanso</option>
                     </select>
                 </div>
-                 <button id="generate-report-btn">Gerar Relatório</button>
+                <button id="generate-report-btn">Gerar Relatório</button>
                 <button id="refresh-chart-btn" style="margin-left: auto;">Atualizar Gráfico</button>
-                 </div>
+            </div>
             <div id="chart-container">
                 <canvas id="study-chart"></canvas>
             </div>
@@ -801,9 +811,7 @@
                 setupSidebarToggle();
                 setupThemeToggle();
                 setupTaskbarToggle(); 
-                // INÍCIO DA ALTERAÇÃO 1 e 4: Inicializar Drag and Drop
                 initializeDragAndDrop();
-                // FIM DA ALTERAÇÃO 1 e 4
             } catch (error) { console.error("Falha na inicialização:", error); alert("Ocorreu um erro. Verifique o console (F12).") }
         }
         
@@ -841,7 +849,6 @@
             return {};
         }
 
-        // --- LÓGICA DE NAVEGAÇÃO E UI GERAL ---
         function setupSidebarToggle() {
             const sidebar = document.getElementById('sidebar');
             const toggleBtn = document.getElementById('sidebar-toggle');
@@ -874,7 +881,6 @@
             });
         }
 
-        // MUDANÇA: Função corrigida para controlar a visibilidade da barra de tarefas
         function setupTaskbarToggle() {
             const taskbar = document.getElementById('viewer-taskbar');
             const toggleBtn = document.getElementById('taskbar-toggle-btn');
@@ -923,7 +929,6 @@
         document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', closeModal));
         window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) closeModal(); });
         
-        // --- LÓGICA DE PASTAS / MATÉRIAS / ASSUNTOS ---
         const itemForm = document.getElementById('item-form');
         const foldersListDiv = document.getElementById('folders-list');
         document.getElementById('change-color-button').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('color-picker-input').click(); });
@@ -981,14 +986,14 @@
 
         function renderFolders() {
             foldersListDiv.innerHTML = '';
-            foldersListDiv.dataset.type = 'root'; // For drag-drop
+            foldersListDiv.dataset.type = 'root';
             data.folders.forEach(folder => {
                 const folderEl = createItemElement('folder', folder);
                 
                 const folderContent = document.createElement('div');
                 folderContent.className = 'content-container';
                 folderContent.dataset.parentId = folder.id;
-                folderContent.dataset.type = 'folder'; // For drag-drop
+                folderContent.dataset.type = 'folder';
                 if (folder.isCollapsed) folderContent.classList.add('collapsed');
                 
                 folder.subjects.forEach(subject => {
@@ -997,7 +1002,7 @@
                     const subjectContent = document.createElement('div');
                     subjectContent.className = 'content-container';
                     subjectContent.dataset.parentId = subject.id;
-                    subjectContent.dataset.type = 'subject'; // For drag-drop
+                    subjectContent.dataset.type = 'subject';
                     if(subject.isCollapsed) subjectContent.classList.add('collapsed');
 
                     subject.topics.forEach(topic => {
@@ -1014,12 +1019,10 @@
 
         function createItemElement(type, item, parentIds = {}) {
             const el = document.createElement('div');
-            // INÍCIO DA ALTERAÇÃO 1: Adicionar atributos para Drag and Drop
             el.draggable = true; 
             el.dataset.id = item.id;
             el.dataset.type = type;
             el.className = `${type}-item`;
-            // FIM DA ALTERAÇÃO 1
             el.style.borderLeftColor = item.color;
             Object.keys(parentIds).forEach(key => { el.dataset[key] = parentIds[key]; });
             
@@ -1031,7 +1034,10 @@
             if (type === 'folder') addBtn = `<button class="add-subject-btn">+ Matéria</button>`;
             if (type === 'subject') addBtn = `<button class="add-topic-btn">+ Assunto</button>`;
             
-            el.innerHTML = `<div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">${toggleBtn}<div style="width: 18px; height: 18px; border-radius: 4px; margin: 0 12px; border: 1px solid #ccc; flex-shrink: 0; background-color:${item.color};"></div><div style="min-width:0;"><strong>${item.name}</strong>${item.description?`<p style="font-size: 0.9em; color: #718096; margin-top: 5px; white-space: pre-wrap; word-break: break-word;">${item.description}</p>`:''}</div></div><div class="action-buttons" style="flex-shrink:0; margin-left: 10px;">${addBtn}<button class="edit-btn">Editar</button><button class="duplicate-btn">Duplicar</button><button class="delete-btn danger">Excluir</button></div>`;
+            // INÍCIO DA ALTERAÇÃO 1: Adicionar o ícone de arrastar
+            const dragHandle = `<span class="drag-handle">&#x283B;</span>`;
+            el.innerHTML = `<div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">${toggleBtn}${dragHandle}<div style="width: 18px; height: 18px; border-radius: 4px; margin: 0 12px; border: 1px solid #ccc; flex-shrink: 0; background-color:${item.color};"></div><div style="min-width:0;"><strong>${item.name}</strong>${item.description?`<p style="font-size: 0.9em; color: #718096; margin-top: 5px; white-space: pre-wrap; word-break: break-word;">${item.description}</p>`:''}</div></div><div class="action-buttons" style="flex-shrink:0; margin-left: 10px;">${addBtn}<button class="edit-btn">Editar</button><button class="duplicate-btn">Duplicar</button><button class="delete-btn danger">Excluir</button></div>`;
+            // FIM DA ALTERAÇÃO 1
             return el;
         }
         
@@ -1111,7 +1117,6 @@
             }
         });
 
-        // --- LÓGICA DE ANEXOS ---
         const directoryStatusDiv = document.getElementById('directory-status');
         const addAttachmentBtn = document.getElementById('add-attachment-btn');
         const addAttachmentLinkBtn = document.getElementById('add-attachment-link-btn');
@@ -1293,7 +1298,6 @@
             });
         }
 
-        // --- LÓGICA DO VISUALIZADOR DE ANEXOS ---
         let highestZ = 1600;
         let openViewers = 0;
 
@@ -1364,17 +1368,16 @@
             taskbarItem.dataset.viewerId = viewerWindow.id;
             taskbarItemsContainer.appendChild(taskbarItem);
 
-            // MUDANÇA: Lógica de clique para restaurar E minimizar a janela
             taskbarItem.addEventListener('click', () => {
                 const win = document.getElementById(taskbarItem.dataset.viewerId);
                 if (win.style.display === 'none') {
-                    win.style.display = 'flex'; // Restaura se estiver oculta
+                    win.style.display = 'flex';
                 } else {
-                    if (win.style.zIndex == highestZ) { // Só minimiza se for a janela ativa
+                    if (win.style.zIndex == highestZ) {
                         win.style.display = 'none';
                     }
                 }
-                win.style.zIndex = ++highestZ; // Traz para frente ao ser clicada
+                win.style.zIndex = ++highestZ;
             });
 
             if (file.type.startsWith('text/')) {
@@ -1458,7 +1461,6 @@
             };
         }
         
-        // --- LÓGICA DE FLASHCARDS ---
         const flashcardAreasContainer = document.getElementById('flashcard-areas-container');
         const areaForm = document.getElementById('flashcard-area-form');
         const workspace = document.getElementById('flashcard-workspace');
@@ -1467,12 +1469,16 @@
             flashcardAreasContainer.innerHTML = '';
             data.flashcardAreas.forEach(area => {
                 const areaEl = document.createElement('div');
-                 // INÍCIO DA ALTERAÇÃO 4: Adicionar atributos para Drag and Drop
-  areaEl.className = 'flashcard-area-card'; areaEl.dataset.id = area.id; areaEl.draggable = true; areaEl.dataset.type = 'flashcard_area';
-                // FIM DA ALTERAÇÃO 4
+                areaEl.className = 'flashcard-area-card'; 
+                areaEl.dataset.id = area.id; 
+                areaEl.draggable = true; 
+                areaEl.dataset.type = 'flashcard_area';
                 areaEl.style.borderTop = `5px solid ${area.color}`;
-                areaEl.innerHTML = `<div><h3>${area.name}</h3><p>${area.cards.length} cartão(s)</p></div><div class="action-buttons"><button class="edit-btn">Editar</button><button class="duplicate-btn">Duplicar</button><button class="delete-btn danger">Excluir</button></div>`;
-                areaEl.addEventListener('click', (e) => { if (!e.target.closest('button')) openWorkspace(area.id); });
+                // INÍCIO DA ALTERAÇÃO 1: Adicionar o ícone de arrastar
+                const dragHandle = `<span class="drag-handle">&#x283B;</span>`;
+                areaEl.innerHTML = `<div style="display: flex; align-items: center; flex-grow: 1;">${dragHandle}<h3>${area.name}</h3><p>${area.cards.length} cartão(s)</p></div><div class="action-buttons"><button class="edit-btn">Editar</button><button class="duplicate-btn">Duplicar</button><button class="delete-btn danger">Excluir</button></div>`;
+                // FIM DA ALTERAÇÃO 1
+                areaEl.addEventListener('click', (e) => { if (!e.target.closest('button') && !e.target.closest('.drag-handle')) openWorkspace(area.id); });
                 flashcardAreasContainer.appendChild(areaEl);
             });
         }
@@ -1528,7 +1534,6 @@
             return cardEl;
         }
 
-        // --- LÓGICA DE AGENDAMENTOS ---
         const scheduleForm = document.getElementById('schedule-form');
         function renderSchedules() {
             document.getElementById('scheduled-activities-list').innerHTML = data.schedules.activities.sort((a,b)=>new Date(a.startTime)-new Date(b.startTime)).map(createScheduleElement).join('');
@@ -1546,13 +1551,12 @@
                             </div>
                         </div>
                         <div class="action-buttons">
-                             <button class="duplicate-btn" data-id="${item.id}" data-type="${item.type}">Duplicar</button>
+                            <button class="duplicate-btn" data-id="${item.id}" data-type="${item.type}">Duplicar</button>
                             <button class="edit-btn" data-id="${item.id}" data-type="${item.type}">Editar</button>
                             <button class="delete-btn danger" data-id="${item.id}" data-type="${item.type}">Excluir</button>
                         </div>
                     </div>`;
         }
-         // INÍCIO DA ALTERAÇÃO 2: Event Listeners para Agendamentos
         document.getElementById('schedules-tab').addEventListener('click', e => {
              const button = e.target.closest('button');
              if (!button) return;
@@ -1563,7 +1567,7 @@
              if (button.classList.contains('edit-btn')) {
                  openScheduleModal(type, id);
              } else if (button.classList.contains('duplicate-btn')) {
-                openScheduleModal(type, id, true); // O terceiro argumento 'true' indica duplicação
+                openScheduleModal(type, id, true);
              } else if (button.classList.contains('delete-btn')) {
                 if (confirm('Mover para a lixeira?')) { 
                     const listKey = type === 'activity' ? 'activities' : 'reviews';
@@ -1577,7 +1581,6 @@
                 }
              }
         });
-        // FIM DA ALTERAÇÃO 2
 
         document.getElementById('add-schedule-btn').addEventListener('click', () => openScheduleModal('activity'));
         document.getElementById('add-review-btn').addEventListener('click', () => openScheduleModal('review'));
@@ -1602,7 +1605,6 @@
             else { data.schedules[listKey].push({ id: getNextId('schedule'), ...scheduleData, notified: false, completed: false }); }
             renderSchedules(); saveData(); closeModal();
         });
-        // INÍCIO DA ALTERAÇÃO 2: Lógica para duplicar
         function openScheduleModal(type, id = null, duplicate = false) {
             scheduleForm.reset(); document.getElementById('schedule-type').value = type;
             const subjectSelect = document.getElementById('schedule-subject'); const topicSelect = document.getElementById('schedule-topic');
@@ -1618,7 +1620,6 @@
             if (id) {
                 const item = type === 'activity' ? data.schedules.activities.find(i => i.id == id) : data.schedules.reviews.find(i => i.id == id);
                 document.getElementById('schedule-modal-title').innerText = `${duplicate ? 'Duplicar' : 'Editar'} ${type==='activity'?'Atividade':'Revisão'}`;
-                // Se não for para duplicar, preenchemos o ID para edição
                 document.getElementById('schedule-edit-id').value = duplicate ? '' : id; 
                 
                 if (item.subjectId) { 
@@ -1627,7 +1628,6 @@
                     if(item.topicId) topicSelect.value = item.topicId; 
                 }
                 
-                // Se for para duplicar, não preenchemos as datas
                 if (!duplicate) {
                     document.getElementById('start-time').value = item.startTime;
                     document.getElementById('end-time').value = item.endTime;
@@ -1639,9 +1639,7 @@
             }
             openModal('schedule-modal');
         }
-        // FIM DA ALTERAÇÃO 2
         
-        // --- LÓGICA DE LOGGING E ALARME ---
         function logSession(subjectId, topicId, durationSeconds, type, sessionDate = new Date()) {
             if (!durationSeconds || durationSeconds <= 0) return;
             data.studyHistory.push({
@@ -1653,11 +1651,9 @@
             saveData();
             renderStudyHistoryLog();
             
-            // INÍCIO DA ALTERAÇÃO 3: Atualizar gráfico se estiver visível
             if (document.getElementById('graficos-tab').classList.contains('active')) {
                 renderChart();
             }
-            // FIM DA ALTERAÇÃO 3
         }
         function playAlarm(message) {
             if (activeAlarmSound) return;
@@ -1706,7 +1702,6 @@
             alarmInterval = setInterval(checkSchedules, 30000);
         }
         
-        // --- LÓGICA DO CRONÔMETRO, CICLOS E REGISTRO ---
         const timerSubjectSelect = document.getElementById('timer-subject-select');
         const timerTopicSelect = document.getElementById('timer-topic-select');
         const timerDisplay = document.getElementById('timer-display');
@@ -1842,7 +1837,6 @@
         pauseTimerBtn.addEventListener('click', pauseTimer);
         resetTimerBtn.addEventListener('click', resetTimer);
 
-        // --- LÓGICA DOS CICLOS ---
         const cyclesContainer = document.getElementById('cycles-container');
         const cycleModal = document.getElementById('cycle-modal');
         const cycleForm = document.getElementById('cycle-form');
@@ -2033,12 +2027,12 @@
             if (currentTimerType === 'study_cycle') {
                 const step = cycle.steps[currentCycleStepIndex];
                 if (step.restDuration > 0) {
-                                                              currentTimerType = 'rest';
-                                                              timerState = 'stopped';
-                                                              const restSeconds = step.restDuration * 60;
-                                                              cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
-                                                              startTimer(restSeconds);
-                                                              return;
+                    currentTimerType = 'rest';
+                    timerState = 'stopped';
+                    const restSeconds = step.restDuration * 60;
+                    cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
+                    startTimer(restSeconds);
+                    return;
                 }
             }
             
@@ -2063,7 +2057,6 @@
             startTimer(studySeconds);
         }
         
-        // --- LÓGICA DO REGISTRO DE ESTUDOS ---
         const studyHistoryLogDiv = document.getElementById('study-history-log');
 
         function renderStudyHistoryLog() {
@@ -2116,7 +2109,6 @@
             }
         });
 
-        // --- LÓGICA DOS GRÁFICOS ---
         const chartTypeSelect = document.getElementById('chart-type-select');
         const chartDataSelect = document.getElementById('chart-data-select');
         
@@ -2204,14 +2196,12 @@
                     const durations = [totals.study / 60, totals.rest / 60];
                     const colors = [vars.accentColor, vars.successColor];
                     if (chartType === 'pie') {
-                        // INÍCIO DA ALTERAÇÃO 3: Adicionar porcentagem ao tooltip
                         chartConfig = { type: 'pie', data: { labels, datasets: [{ data: durations, backgroundColor: colors }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: 'Proporção de Estudo vs. Descanso (minutos)' }, tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if(label) { label += ': '; } const value = context.raw; const sum = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0); const percentage = sum > 0 ? (value / sum * 100).toFixed(1) : 0; label += `${value.toFixed(2)} min (${percentage}%)`; return label; } } } } } };
-                        // FIM DA ALTERAÇÃO 3
                     } else { 
                         chartConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Minutos', data: durations, backgroundColor: colors }] }, options: { maintainAspectRatio: false, responsive: true, indexAxis: 'y', plugins: { legend: {display: false}, title: { display: true, text: 'Comparativo de Estudo vs. Descanso (minutos)' } } } };
                     }
                 }
-            } else { // subject or topic
+            } else { 
                 const key = dataType === 'subject' ? 'subjectId' : 'topicId';
                 const validStudyHistory = validHistory.filter(h => h.type.startsWith('study') && h[key]);
 
@@ -2240,13 +2230,11 @@
 
                     const sorted = Object.entries(aggregated).sort((a, b) => b[1] - a[1]);
                     const labels = sorted.map(entry => findItemInfo(entry[0], dataType).name);
-                    const durations = sorted.map(entry => (entry[1] / 60)); // MUDANÇA: Não arredondar ainda para o cálculo da %
+                    const durations = sorted.map(entry => (entry[1] / 60));
                     const colors = sorted.map(entry => findItemInfo(entry[0], dataType).color);
 
                     if (chartType === 'pie') {
-                        // INÍCIO DA ALTERAÇÃO 3: Adicionar porcentagem ao tooltip
                          chartConfig = { type: 'pie', data: { labels, datasets: [{ data: durations, backgroundColor: colors }] }, options: { maintainAspectRatio: false, responsive: true, plugins: { title: { display: true, text: `Proporção por ${dataType === 'subject' ? 'Matéria' : 'Assunto'} (minutos)` }, tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if(label) { label += ': '; } const value = context.raw; const sum = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0); const percentage = sum > 0 ? (value / sum * 100).toFixed(1) : 0; label += `${value.toFixed(2)} min (${percentage}%)`; return label; } } } } } };
-                        // FIM DA ALTERAÇÃO 3
                     } else {
                         chartConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Minutos', data: durations.map(d => d.toFixed(2)), backgroundColor: colors }] }, options: { maintainAspectRatio: false, responsive: true, indexAxis: 'y', plugins: { legend: {display: false}, title: { display: true, text: `Ranking por ${dataType === 'subject' ? 'Matéria' : 'Assunto'} (minutos)` } } } };
                     }
@@ -2259,7 +2247,6 @@
         chartDataSelect.addEventListener('change', renderChart);
         document.getElementById('refresh-chart-btn').addEventListener('click', renderChart);
 
-        // --- NOVA LÓGICA DO CALENDÁRIO ---
         function initializeCalendar() {
             const calendarEl = document.getElementById('calendar');
             if (!calendarEl) return;
@@ -2336,7 +2323,6 @@
             }
         }
         
-        // --- LÓGICA DA LIXEIRA ---
         function moveToTrash(item, type, parentIds = {}) {
             if (!data.trash) data.trash = [];
             data.trash.push({
@@ -2447,7 +2433,6 @@
             }
         });
 
-        // --- CONFIGURAÇÕES ---
         document.getElementById('settings-button').addEventListener('click', () => openModal('settings-modal'));
         document.getElementById('export-data-btn').addEventListener('click', () => { const dataStr = JSON.stringify(data); const blob = new Blob([dataStr], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_estudos_${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); });
         document.getElementById('import-file-input').addEventListener('change', (e) => {
@@ -2464,12 +2449,15 @@
             reader.readAsText(file); e.target.value = '';
         });
 
-        // INÍCIO DA CORREÇÃO: LÓGICA DE DRAG AND DROP
         function initializeDragAndDrop() {
             let draggedElement = null;
-            let currentContainer = null;
             
             function onDragStart(e) {
+                // INÍCIO DA ALTERAÇÃO 1: Iniciar arrasto apenas se for clicado no handle
+                if (!e.target.closest('.drag-handle')) {
+                    e.preventDefault();
+                    return;
+                }
                 draggedElement = e.target.closest('[draggable="true"]');
                 if (!draggedElement) return;
                 e.dataTransfer.effectAllowed = "move";
@@ -2486,27 +2474,23 @@
                     placeholder.remove();
                 }
                 draggedElement = null;
-                currentContainer = null;
             }
             
             function onDragOver(e) {
                 e.preventDefault();
-                const dropTarget = e.target.closest('.folder-item, .subject-item, .topic-item, .flashcard-area-card');
                 const container = e.target.closest('#folders-list, .content-container, #flashcard-areas-container');
                 
-                if (!draggedElement || !container) {
-                    return;
-                }
+                if (!draggedElement || !container) return;
                 
                 const draggedType = draggedElement.dataset.type;
-                const containerType = container.id === 'flashcard-areas-container' ? 'flashcard_area' : (container.dataset.type || 'root');
-                const dropTargetType = dropTarget ? dropTarget.dataset.type : null;
                 
-                // Verifica se a área de drop é válida
-                if (draggedType === 'folder' && container.id !== 'folders-list') return;
-                if (draggedType === 'subject' && container.dataset.type !== 'folder') return;
-                if (draggedType === 'topic' && container.dataset.type !== 'subject') return;
-                if (draggedType === 'flashcard_area' && container.id !== 'flashcard-areas-container') return;
+                let canDrop = false;
+                if (draggedType === 'folder' && container.id === 'folders-list') canDrop = true;
+                if (draggedType === 'subject' && container.dataset.type === 'folder') canDrop = true;
+                if (draggedType === 'topic' && container.dataset.type === 'subject') canDrop = true;
+                if (draggedType === 'flashcard_area' && container.id === 'flashcard-areas-container') canDrop = true;
+                
+                if (!canDrop) return;
                 
                 const afterElement = getDragAfterElement(container, e.clientY);
                 const placeholder = getOrCreatePlaceholder(container);
@@ -2559,7 +2543,7 @@
             }
         
             function getDragAfterElement(container, y) {
-                const draggableElements = [...container.querySelectorAll('[draggable="true"]:not(.dragging)')];
+                const draggableElements = [...container.querySelectorAll('[draggable="true"]:not(.dragging):not(.drag-over-placeholder)')];
                 return draggableElements.reduce((closest, child) => {
                     const box = child.getBoundingClientRect();
                     const offset = y - box.top - box.height / 2;
@@ -2585,9 +2569,7 @@
             document.body.addEventListener('dragover', onDragOver);
             document.body.addEventListener('drop', onDrop);
         }
-        // FIM DA CORREÇÃO
-
-        // INÍCIO DA ALTERAÇÃO 5: LÓGICA DE GERAR RELATÓRIO
+        
         document.getElementById('generate-report-btn').addEventListener('click', generateReport);
         
         function generateReport() {
@@ -2669,7 +2651,6 @@
                         const reportData = ${JSON.stringify(reportData)};
 
                         function renderCharts(data) {
-                           // Pie Chart
                            new Chart(document.getElementById('pieChart'), {
                                 type: 'pie',
                                 data: {
@@ -2677,7 +2658,6 @@
                                     datasets: [{ data: data.pie.data, backgroundColor: data.pie.colors }]
                                 }
                            });
-                           // Bar Chart
                            new Chart(document.getElementById('barChart'), {
                                 type: 'bar',
                                 data: {
@@ -2686,7 +2666,6 @@
                                 },
                                 options: { indexAxis: 'y', plugins: { legend: { display: false } } }
                            });
-                           // Rest Chart
                            new Chart(document.getElementById('restChart'), {
                                 type: 'pie',
                                 data: {
@@ -2694,7 +2673,6 @@
                                     datasets: [{ data: data.rest.data, backgroundColor: ['${getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim()}', '${getComputedStyle(document.documentElement).getPropertyValue('--success-color').trim()}'] }]
                                 }
                            });
-                           // Line Chart
                            new Chart(document.getElementById('lineChart'), {
                                 type: 'line',
                                 data: {
@@ -2715,7 +2693,6 @@
         function getReportData() {
             const studyHistory = data.studyHistory.filter(h => h.type.startsWith('study'));
             
-            // Data for Table
             const tableRows = studyHistory.sort((a,b) => new Date(b.date) - new Date(a.date)).map(log => {
                 const path = findItemPath(log.topicId || log.subjectId, log.topicId ? 'topic' : 'subject');
                 const logDate = new Date(log.date);
@@ -2730,7 +2707,6 @@
                 `;
             });
 
-            // Data for Charts
             const aggregatedBySubject = studyHistory.reduce((acc, h) => {
                 if(h.subjectId) {
                     if (!acc[h.subjectId]) acc[h.subjectId] = 0;
@@ -2780,9 +2756,7 @@
                 }
             };
         }
-        // FIM DA ALTERAÇÃO 5
         
-        // --- KICKSTART ---
         if ('showDirectoryPicker' in window) {
             initializeApp();
         } else {
