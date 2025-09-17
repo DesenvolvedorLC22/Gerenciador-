@@ -178,6 +178,18 @@
             font-size: 0.9em;
             color: #555;
         }
+        /* --- INÍCIO DA ALTERAÇÃO --- */
+        .schedule-info .repeat-info {
+            font-style: italic;
+            color: #718096;
+            font-size: 0.9em;
+            margin-top: 4px;
+        }
+        body.dark-theme .schedule-info .repeat-info {
+            color: #a0aec0;
+        }
+        /* --- FIM DA ALTERAÇÃO --- */
+
         body.dark-theme .schedule-info { color: #a0aec0; }
         .schedule-item.completed { text-decoration: line-through; opacity: 0.7; background-color: #e2e8f0; border-left-color: var(--success-color);}
         body.dark-theme .schedule-item.completed { background-color: #2a3344; }
@@ -571,6 +583,102 @@
             margin: 5px 0;
         }
         
+        /* Estilos para o Toggle Switch de Ativação */
+        .schedule-item-header {
+            display: flex;
+            align-items: center;
+            gap: 15px; /* Espaço entre o switch e o nome */
+            flex-grow: 1; /* Ocupa o espaço disponível */
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            /* --- INÍCIO DA ALTERAÇÃO --- */
+            background-color: var(--border-color); /* Cinza da cor da tela (borda) */
+            /* --- FIM DA ALTERAÇÃO --- */
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-color); /* Azul quando ligado */
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px var(--accent-color);
+        }
+
+        input:checked + .slider:before {
+            -webkit-transform: translateX(20px);
+            -ms-transform: translateX(20px);
+            transform: translateX(20px);
+        }
+
+        /* --- INÍCIO DA ALTERAÇÃO --- */
+        /* Estilos para o seletor de dias de repetição */
+        .repeat-days-selector {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+        }
+        .day-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            background-color: var(--primary-bg);
+            border: 1px solid var(--border-color);
+            font-weight: bold;
+            font-size: 0.9em;
+            user-select: none;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .day-circle:hover {
+            border-color: var(--accent-color);
+        }
+        .day-circle.active {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+        /* --- FIM DA ALTERAÇÃO --- */
     </style>
 </head>
 <body>
@@ -772,6 +880,18 @@
                 <div class="form-group"><label for="schedule-topic">Assunto:</label><select id="schedule-topic" required></select></div>
                 <div class="form-group"><label for="start-time">Início:</label><input type="datetime-local" id="start-time" required></div>
                 <div class="form-group"><label for="end-time">Fim:</label><input type="datetime-local" id="end-time" required></div>
+                <div class="form-group">
+                    <label>Repetir semanalmente nos dias:</label>
+                    <div id="schedule-repeat-days" class="repeat-days-selector">
+                        <span class="day-circle" data-day="0">D</span>
+                        <span class="day-circle" data-day="1">S</span>
+                        <span class="day-circle" data-day="2">T</span>
+                        <span class="day-circle" data-day="3">Q</span>
+                        <span class="day-circle" data-day="4">Q</span>
+                        <span class="day-circle" data-day="5">S</span>
+                        <span class="day-circle" data-day="6">S</span>
+                    </div>
+                </div>
                 <button type="submit">Salvar</button><button type="button" class="close-modal danger">Cancelar</button>
             </form>
         </div>
@@ -779,10 +899,25 @@
     <div id="settings-modal" class="modal">
         <div class="modal-content">
             <h2>Configurações</h2>
-            <button id="open-trash-btn" style="margin-bottom: 10px;">🗑️ Lixeira</button>
-            <button id="export-data-btn">Exportar Dados</button>
-            <div class="form-group" style="margin-top: 20px;"><label for="import-file-input">Importar Dados:</label><input type="file" id="import-file-input" accept=".json"></div>
-            <button type="button" class="close-modal danger" style="margin-top: 15px;">Fechar</button>
+            
+            <h3>Dados</h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+                <button id="open-trash-btn">🗑️ Lixeira</button>
+                <button id="export-data-btn">Exportar Dados</button>
+            </div>
+            <div class="form-group">
+                <label for="import-file-input">Importar Dados:</label>
+                <input type="file" id="import-file-input" accept=".json">
+            </div>
+
+            <h3 style="margin-top: 25px;">Som do Alarme</h3>
+            <div class="form-group">
+                <label for="alarm-sound-input">Trocar som do alarme (MP3, WAV, etc.):</label>
+                <input type="file" id="alarm-sound-input" accept="audio/*">
+                <p id="current-alarm-sound-name" style="font-size: 0.9em; color: #718096; margin-top: 8px;">Som atual: Padrão</p>
+            </div>
+            <button id="reset-alarm-sound-btn" class="danger" style="width: 100%; margin-bottom: 20px;">Restaurar Som Padrão</button>
+            <button type="button" class="close-modal danger">Fechar</button>
         </div>
     </div>
     <div id="cycle-modal" class="modal">
@@ -848,6 +983,7 @@
         let isCycleRunning = false, currentCycleId, currentCycleRep, currentCycleStepIndex;
         let currentChart = null; 
         let calendar = null;
+        let customAlarmSoundURL = null; 
         
         // --- LÓGICA DO MENU DE CONTEXTO ---
         const contextMenu = document.createElement('div');
@@ -881,7 +1017,6 @@
 
             let menuHTML = '';
             
-            // MODIFICADO: Lógica do menu atualizada para incluir opções de "Adicionar"
             if (type === 'folder') {
                 menuHTML = `
                     <div class="context-menu-item" data-action="add-subject">➕ Adicionar Matéria</div>
@@ -900,13 +1035,22 @@
                     <div class="context-menu-separator"></div>
                     <div class="context-menu-item danger" data-action="delete">🗑️ Excluir</div>
                 `;
-            } else if (['topic', 'flashcard_area', 'schedule', 'cycle'].includes(type)) {
+            } else if (['topic', 'flashcard_area', 'cycle'].includes(type)) {
                 menuHTML = `
                     <div class="context-menu-item" data-action="edit">✏️ Editar</div>
                     <div class="context-menu-item" data-action="duplicate">❏ Duplicar</div>
                     <div class="context-menu-separator"></div>
                     <div class="context-menu-item danger" data-action="delete">🗑️ Excluir</div>
                 `;
+            } else if (type === 'schedule') {
+                 // --- INÍCIO DA ALTERAÇÃO ---
+                menuHTML = `
+                    <div class="context-menu-item" data-action="edit">✏️ Editar</div>
+                    <div class="context-menu-item" data-action="duplicate">❏ Duplicar</div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item danger" data-action="delete">🗑️ Excluir</div>
+                `;
+                // --- FIM DA ALTERAÇÃO ---
             }
 
             if (menuHTML) {
@@ -958,12 +1102,21 @@
                 data = { ...defaultStructure, ...parsedData };
                 data.nextIds = { ...defaultStructure.nextIds, ...(parsedData.nextIds || {}) };
                 if (!data.trash) data.trash = [];
+
+                // Migration logic for schedule properties
+                const migrateSchedule = item => {
+                    if (typeof item.active === 'undefined') item.active = true;
+                    if (typeof item.repeatDays === 'undefined') item.repeatDays = [];
+                };
+                (data.schedules.activities || []).forEach(migrateSchedule);
+                (data.schedules.reviews || []).forEach(migrateSchedule);
             }
         }
 
         async function initializeApp() {
             try {
                 await initDB();
+                await loadAlarmSound();
                 rootDirectoryHandle = await loadDirectoryHandle();
                 loadData();
                 updateDirectoryStatus();
@@ -986,9 +1139,58 @@
             renderStudyHistoryLog();
         }
 
-        function initDB() { return new Promise((resolve, reject) => { const request = indexedDB.open('StudyAppDB_v4', 1); request.onerror = () => reject("Erro ao abrir IndexedDB."); request.onsuccess = (event) => { db = event.target.result; resolve(); }; request.onupgradeneeded = (event) => { const db = event.target.result; if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' }); }; }); }
+        function initDB() { 
+            return new Promise((resolve, reject) => { 
+                const request = indexedDB.open('StudyAppDB_v4', 2); // Versão incrementada para 2
+                request.onerror = () => reject("Erro ao abrir IndexedDB."); 
+                request.onsuccess = (event) => { db = event.target.result; resolve(); }; 
+                request.onupgradeneeded = (event) => { 
+                    const db = event.target.result; 
+                    if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' }); 
+                    if (!db.objectStoreNames.contains('sounds')) db.createObjectStore('sounds', { keyPath: 'id' });
+                }; 
+            }); 
+        }
+
         function saveDirectoryHandle(handle) { if (!db) return Promise.reject("DB não inicializado."); const transaction = db.transaction(['settings'], 'readwrite'); return transaction.objectStore('settings').put({ id: 'rootDirectory', handle }); }
         function loadDirectoryHandle() { if (!db) return Promise.resolve(null); const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('rootDirectory'); return new Promise((resolve) => { request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
+
+        function saveAlarmSound(file) {
+            if (!db) return Promise.reject("DB não inicializado.");
+            const transaction = db.transaction(['sounds'], 'readwrite');
+            const store = transaction.objectStore('sounds');
+            store.put({ id: 'customAlarm', file: file });
+            return new Promise((resolve, reject) => {
+                transaction.oncomplete = resolve;
+                transaction.onerror = reject;
+            });
+        }
+
+        function loadAlarmSound() {
+            if (!db) return Promise.resolve();
+            const request = db.transaction(['sounds'], 'readonly').objectStore('sounds').get('customAlarm');
+            return new Promise((resolve) => {
+                request.onsuccess = () => {
+                    const result = request.result;
+                    if (result && result.file) {
+                        if (customAlarmSoundURL) URL.revokeObjectURL(customAlarmSoundURL);
+                        customAlarmSoundURL = URL.createObjectURL(result.file);
+                        document.getElementById('current-alarm-sound-name').textContent = `Som atual: ${result.file.name}`;
+                    } else {
+                        document.getElementById('current-alarm-sound-name').textContent = 'Som atual: Padrão';
+                    }
+                    resolve();
+                };
+                request.onerror = () => resolve(); // Continua mesmo se houver erro
+            });
+        }
+
+        function deleteAlarmSound() {
+            if (!db) return Promise.reject("DB não inicializado.");
+            const transaction = db.transaction(['sounds'], 'readwrite');
+            transaction.objectStore('sounds').delete('customAlarm');
+            return new Promise(resolve => transaction.oncomplete = resolve);
+        }
 
         function initAudioContext() { if (!audioContext && (window.AudioContext || window.webkitAudioContext)) try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { console.error("Web Audio API não é suportada.", e); } }
         function playDefaultBeep() { if (!audioContext) return null; if (audioContext.state === 'suspended') audioContext.resume(); const gainNode = audioContext.createGain(); gainNode.connect(audioContext.destination); const oscillator = audioContext.createOscillator(); oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(880, audioContext.currentTime); oscillator.connect(gainNode); oscillator.start(); const interval = setInterval(() => { gainNode.gain.cancelScheduledValues(audioContext.currentTime); gainNode.gain.setValueAtTime(gainNode.gain.value, audioContext.currentTime); gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.5); }, 600); return { oscillator, gainNode, interval }; }
@@ -1179,7 +1381,6 @@
             });
         }
 
-        // MODIFICADO: Botões "+ Matéria" e "+ Assunto" removidos do HTML
         function createItemElement(type, item, parentIds = {}) {
             const el = document.createElement('div');
             el.dataset.id = item.id;
@@ -1209,7 +1410,6 @@
             return el;
         }
         
-        // MODIFICADO: Removida a lógica dos botões de adicionar, que agora está no menu de contexto.
         foldersListDiv.addEventListener('click', (e) => {
             const toggle = e.target.closest('.toggle-btn');
             const itemEl = e.target.closest('[data-id]');
@@ -1588,7 +1788,6 @@
                 areaEl.dataset.id = area.id; 
                 areaEl.dataset.type = 'flashcard_area';
                 areaEl.style.borderTop = `5px solid ${area.color}`;
-                // MODIFICADO: Removido o div.action-buttons. As ações estão no menu de contexto.
                 areaEl.innerHTML = `
                     <div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">
                         <span class="drag-handle">${dragHandleIconSVG}</span>
@@ -1610,8 +1809,6 @@
             else data.flashcardAreas.push({ id: getNextId('flashcardArea'), name, color, cards: [] });
             renderFlashcardAreas(); saveData(); closeModal();
         });
-        
-        // MODIFICADO: O listener de botões no container foi removido, pois a lógica agora está no menu de contexto.
         
         function openWorkspace(areaId) { 
             workspace.dataset.areaId = areaId; 
@@ -1638,52 +1835,168 @@
 
         // --- LÓGICA DE AGENDAMENTOS ---
         const scheduleForm = document.getElementById('schedule-form');
+
+        // --- INÍCIO DA ALTERAÇÃO ---
         function renderSchedules() {
-            document.getElementById('scheduled-activities-list').innerHTML = data.schedules.activities.sort((a,b)=>new Date(a.startTime)-new Date(b.startTime)).map(createScheduleElement).join('');
-            document.getElementById('scheduled-reviews-list').innerHTML = data.schedules.reviews.sort((a,b)=>new Date(a.startTime)-new Date(b.startTime)).map(createScheduleElement).join('');
+            document.getElementById('scheduled-activities-list').innerHTML = data.schedules.activities
+                .filter(item => !item.masterId) // Apenas mostrar eventos "mestre"
+                .sort((a,b) => new Date(a.startTime) - new Date(b.startTime))
+                .map(createScheduleElement).join('');
+
+            document.getElementById('scheduled-reviews-list').innerHTML = data.schedules.reviews
+                .filter(item => !item.masterId) // Apenas mostrar eventos "mestre"
+                .sort((a,b) => new Date(a.startTime) - new Date(b.startTime))
+                .map(createScheduleElement).join('');
         }
+
         function createScheduleElement(item) {
             const path = findItemPath(item.topicId, 'topic');
             let name = path.topic ? `${path.folder.name} / ${path.subject.name} > ${path.topic.name}` : 'Item não encontrado';
-            // MODIFICADO: Adicionado data-attributes e removido o div.action-buttons
+            const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            let repeatHtml = '';
+            if (item.repeatDays && item.repeatDays.length > 0) {
+                const repeatDaysText = item.repeatDays.sort().map(dayIndex => weekDays[dayIndex]).join(', ');
+                repeatHtml = `<span class="repeat-info">Repete: ${repeatDaysText}</span>`;
+            }
+
             return `<div class="schedule-item ${item.completed ? 'completed' : ''}" data-id="${item.id}" data-type="schedule" data-schedule-type="${item.type}">
-                        <div>
-                            <strong>${name}</strong>
-                            <div class="schedule-info">
-                                <span>Início: ${new Date(item.startTime).toLocaleString('pt-BR')}</span>
-                                <span>Fim: ${new Date(item.endTime).toLocaleString('pt-BR')}</span>
+                        <div class="schedule-item-header">
+                            <label class="toggle-switch">
+                                <input type="checkbox" class="schedule-toggle-checkbox" ${item.active ? 'checked' : ''}>
+                                <span class="slider"></span>
+                            </label>
+                            <div>
+                                <strong>${name}</strong>
+                                <div class="schedule-info">
+                                    <span>Início: ${new Date(item.startTime).toLocaleString('pt-BR')}</span>
+                                    <span>Fim: ${new Date(item.endTime).toLocaleString('pt-BR')}</span>
+                                    ${repeatHtml}
+                                </div>
                             </div>
                         </div>
                     </div>`;
         }
 
-        // MODIFICADO: O listener de botões foi removido, a lógica agora está no menu de contexto.
+        document.getElementById('schedules-tab').addEventListener('change', e => {
+            if (e.target.classList.contains('schedule-toggle-checkbox')) {
+                const scheduleItemEl = e.target.closest('.schedule-item');
+                if (!scheduleItemEl) return;
+
+                const id = parseInt(scheduleItemEl.dataset.id, 10);
+                const type = scheduleItemEl.dataset.scheduleType;
+                const listKey = type === 'activity' ? 'activities' : 'reviews';
+                
+                const item = data.schedules[listKey].find(i => i.id === id);
+                if (item) {
+                    item.active = e.target.checked;
+                    // Ativar/desativar também as instâncias futuras
+                    data.schedules[listKey]
+                        .filter(instance => instance.masterId === id)
+                        .forEach(instance => instance.active = e.target.checked);
+                    saveData();
+                }
+            }
+        });
 
         document.getElementById('add-schedule-btn').addEventListener('click', () => openScheduleModal('activity'));
         document.getElementById('add-review-btn').addEventListener('click', () => openScheduleModal('review'));
+
+        function formatAsLocalDateTime(date) {
+            const y = date.getFullYear();
+            const m = (date.getMonth() + 1).toString().padStart(2, '0');
+            const d = date.getDate().toString().padStart(2, '0');
+            const h = date.getHours().toString().padStart(2, '0');
+            const min = date.getMinutes().toString().padStart(2, '0');
+            return `${y}-${m}-${d}T${h}:${min}`;
+        }
+        
         scheduleForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const editId = document.getElementById('schedule-edit-id').value; const newStart = new Date(document.getElementById('start-time').value); const newEnd = new Date(document.getElementById('end-time').value);
+            const newStart = new Date(document.getElementById('start-time').value);
+            const newEnd = new Date(document.getElementById('end-time').value);
             if (!newStart.getTime() || !newEnd.getTime() || newEnd <= newStart) { alert("Horários inválidos."); return; }
-            const hasConflict = [...data.schedules.activities, ...data.schedules.reviews].some(event => { if (editId && event.id == editId) return false; const oldStart = new Date(event.startTime); const oldEnd = new Date(event.endTime); return (newStart < oldEnd) && (newEnd > oldStart); });
-            if (hasConflict) { alert("Conflito de horário!"); return; }
+            
+            const editId = document.getElementById('schedule-edit-id').value ? parseInt(document.getElementById('schedule-edit-id').value, 10) : null;
+            const hasConflict = [...data.schedules.activities, ...data.schedules.reviews].some(event => { 
+                if (editId && (event.id == editId || event.masterId == editId)) return false; // Ignora o próprio evento e suas instâncias
+                const oldStart = new Date(event.startTime); const oldEnd = new Date(event.endTime); 
+                return (newStart < oldEnd) && (newEnd > oldStart); 
+            });
+            if (hasConflict) { alert("Conflito de horário com o primeiro evento!"); return; }
+
             const subjectIdVal = document.getElementById('schedule-subject').value;
             const topicIdVal = document.getElementById('schedule-topic').value;
             if (!subjectIdVal || !topicIdVal) { alert("Selecione matéria e assunto."); return; }
+
+            const repeatDays = Array.from(document.querySelectorAll('#schedule-repeat-days .day-circle.active')).map(el => parseInt(el.dataset.day, 10));
+
             const scheduleData = { 
                 subjectId: parseInt(subjectIdVal, 10), 
                 topicId: parseInt(topicIdVal, 10), 
-                startTime:document.getElementById('start-time').value, 
-                endTime:document.getElementById('end-time').value, 
-                type:document.getElementById('schedule-type').value 
+                startTime: document.getElementById('start-time').value, 
+                endTime: document.getElementById('end-time').value, 
+                type: document.getElementById('schedule-type').value,
+                repeatDays: repeatDays,
+                active: true, // Sempre ativo ao criar/editar
             };
+
             const listKey = scheduleData.type === 'activity' ? 'activities' : 'reviews';
-            if (editId) { const index = data.schedules[listKey].findIndex(i => i.id == editId); data.schedules[listKey][index] = { ...data.schedules[listKey][index], ...scheduleData, notified: false, completed: false }; } 
-            else { data.schedules[listKey].push({ id: getNextId('schedule'), ...scheduleData, notified: false, completed: false }); }
+            
+            // Remove instâncias antigas se for uma edição
+            if (editId) {
+                data.schedules[listKey] = data.schedules[listKey].filter(evt => evt.masterId !== editId);
+            }
+            
+            let masterItem;
+            if (editId) {
+                const index = data.schedules[listKey].findIndex(i => i.id == editId);
+                masterItem = data.schedules[listKey][index] = { ...data.schedules[listKey][index], ...scheduleData, notified: false, completed: false };
+            } else {
+                masterItem = { id: getNextId('schedule'), ...scheduleData, notified: false, completed: false };
+                data.schedules[listKey].push(masterItem);
+            }
+
+            // Gerar novas instâncias se for repetitivo
+            if (repeatDays.length > 0) {
+                const duration = newEnd.getTime() - newStart.getTime();
+                const startDate = new Date(masterItem.startTime);
+                
+                // Gera por 8 semanas (aprox. 2 meses)
+                for (let i = 1; i < 60; i++) {
+                    const nextDate = new Date(startDate);
+                    nextDate.setDate(startDate.getDate() + i);
+                    
+                    if (repeatDays.includes(nextDate.getDay())) {
+                        const newInstanceStart = new Date(nextDate);
+                        const newInstanceEnd = new Date(newInstanceStart.getTime() + duration);
+
+                        const instanceHasConflict = [...data.schedules.activities, ...data.schedules.reviews].some(event => { 
+                             const oldStart = new Date(event.startTime); const oldEnd = new Date(event.endTime); 
+                             return (newInstanceStart < oldEnd) && (newInstanceEnd > oldStart); 
+                        });
+                        
+                        if (!instanceHasConflict) {
+                            data.schedules[listKey].push({
+                                ...masterItem,
+                                id: getNextId('schedule'),
+                                masterId: masterItem.id,
+                                startTime: formatAsLocalDateTime(newInstanceStart),
+                                endTime: formatAsLocalDateTime(newInstanceEnd),
+                                repeatDays: [] // Instâncias não repetem
+                            });
+                        }
+                    }
+                }
+            }
+
             renderSchedules(); saveData(); closeModal();
+            if (calendar) calendar.refetchEvents();
         });
+
         function openScheduleModal(type, id = null, duplicate = false) {
             scheduleForm.reset(); document.getElementById('schedule-type').value = type;
+            document.querySelectorAll('#schedule-repeat-days .day-circle').forEach(el => el.classList.remove('active'));
+
             const subjectSelect = document.getElementById('schedule-subject'); const topicSelect = document.getElementById('schedule-topic');
             subjectSelect.innerHTML = '<option value="">Selecione...</option>';
             data.folders.forEach(folder => folder.subjects.forEach(subject => subjectSelect.innerHTML += `<option value="${subject.id}">${folder.name} / ${subject.name}</option>`));
@@ -1694,8 +2007,10 @@
                     if (subject) subject.topics.forEach(t => topicSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
                 }
             };
+
             if (id) {
-                const item = type === 'activity' ? data.schedules.activities.find(i => i.id == id) : data.schedules.reviews.find(i => i.id == id);
+                const listKey = type === 'activity' ? 'activities' : 'reviews';
+                const item = data.schedules[listKey].find(i => i.id == id);
                 document.getElementById('schedule-modal-title').innerText = `${duplicate ? 'Duplicar' : 'Editar'} ${type==='activity'?'Atividade':'Revisão'}`;
                 document.getElementById('schedule-edit-id').value = duplicate ? '' : id; 
                 
@@ -1708,6 +2023,11 @@
                 if (!duplicate) {
                     document.getElementById('start-time').value = item.startTime;
                     document.getElementById('end-time').value = item.endTime;
+                    if (item.repeatDays) {
+                        item.repeatDays.forEach(dayIndex => {
+                            document.querySelector(`#schedule-repeat-days .day-circle[data-day="${dayIndex}"]`).classList.add('active');
+                        });
+                    }
                 }
             } else { 
                 document.getElementById('schedule-modal-title').innerText = `Agendar ${type==='activity'?'Atividade':'Revisão'}`; 
@@ -1716,7 +2036,14 @@
             }
             openModal('schedule-modal');
         }
-        
+
+        document.getElementById('schedule-repeat-days').addEventListener('click', e => {
+            if (e.target.classList.contains('day-circle')) {
+                e.target.classList.toggle('active');
+            }
+        });
+        // --- FIM DA ALTERAÇÃO ---
+
         // --- LÓGICA DE LOGGING E ALARME ---
         function logSession(subjectId, topicId, durationSeconds, type, sessionDate = new Date()) {
             if (!durationSeconds || durationSeconds <= 0) return;
@@ -1733,21 +2060,49 @@
                 renderChart();
             }
         }
+        
         function playAlarm(message) {
             if (activeAlarmSound) return;
             initAudioContext();
-            activeAlarmSound = playDefaultBeep();
-            if(activeAlarmSound) {
+            
+            let soundPlayed = false;
+            
+            if (customAlarmSoundURL) {
+                const audio = new Audio(customAlarmSoundURL);
+                audio.loop = true;
+                audio.play().catch(e => {
+                    console.error("Erro ao tocar som customizado, usando padrão.", e);
+                    activeAlarmSound = playDefaultBeep(); // Fallback
+                });
+                activeAlarmSound = audio; // Armazena o elemento de áudio
+                soundPlayed = true;
+            } else {
+                activeAlarmSound = playDefaultBeep();
+                soundPlayed = true;
+            }
+
+            if(soundPlayed && activeAlarmSound) {
                 document.getElementById('alarm-text').textContent = message || "ALARME!";
                 document.getElementById('alarm-banner').style.display = 'flex';
             }
         }
+
         function stopAlarmSound() {
-            stopDefaultBeep(activeAlarmSound);
+            if (!activeAlarmSound) return;
+
+            if (activeAlarmSound.oscillator) {
+                stopDefaultBeep(activeAlarmSound);
+            } else if (typeof activeAlarmSound.pause === 'function') {
+                activeAlarmSound.pause();
+                activeAlarmSound.src = ''; 
+            }
+
             activeAlarmSound = null;
             document.getElementById('alarm-banner').style.display = 'none';
         }
+
         document.getElementById('stop-alarm-btn').addEventListener('click', stopAlarmSound);
+
         function startAlarmSystem() {
             if (alarmInterval) clearInterval(alarmInterval);
             const checkSchedules = () => {
@@ -1757,7 +2112,7 @@
                 [...data.schedules.activities, ...data.schedules.reviews].forEach(item => {
                     const startTime = new Date(item.startTime);
                     const endTime = new Date(item.endTime);
-                    if (now >= startTime && !item.notified) {
+                    if (now >= startTime && !item.notified && item.active) {
                         const path = findItemPath(item.topicId, 'topic');
                         playAlarm(`Hora de iniciar: ${path.topic?.name || 'Atividade Agendada'}`);
                         item.notified = true;
@@ -1927,7 +2282,6 @@
             data.cycles.forEach(cycle => {
                 const card = document.createElement('div');
                 card.className = 'cycle-card';
-                // MODIFICADO: Adicionado data-type para o menu de contexto. Removidos botões de ação.
                 card.dataset.id = cycle.id;
                 card.dataset.type = 'cycle';
                 card.style.borderColor = cycle.color;
@@ -1957,7 +2311,6 @@
                 }
                 startCycle(cycleId);
             } 
-            // MODIFICADO: Lógica de editar/deletar/duplicar movida para o menu de contexto.
         });
 
         function createCycleStepElement(step = {}) {
@@ -2090,12 +2443,12 @@
             if (currentTimerType === 'study_cycle') {
                 const step = cycle.steps[currentCycleStepIndex];
                 if (step.restDuration > 0) {
-                                                                    currentTimerType = 'rest';
-                                                                    timerState = 'stopped';
-                                                                    const restSeconds = step.restDuration * 60;
-                                                                    cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
-                                                                    startTimer(restSeconds);
-                                                                    return;
+                                                                                                currentTimerType = 'rest';
+                                                                                                timerState = 'stopped';
+                                                                                                const restSeconds = step.restDuration * 60;
+                                                                                                cycleStatusBanner.textContent = `Ciclo: ${cycle.name} | Repetição ${currentCycleRep}/${cycle.repetitions} | DESCANSANDO`;
+                                                                                                startTimer(restSeconds);
+                                                                                                return;
                 }
             }
             
@@ -2518,8 +2871,38 @@
             reader.readAsText(file); e.target.value = '';
         });
 
+        document.getElementById('alarm-sound-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                await saveAlarmSound(file);
+                await loadAlarmSound(); // Recarrega para criar a URL
+                alert('Novo som de alarme salvo com sucesso!');
+            } catch (error) {
+                console.error("Erro ao salvar som do alarme:", error);
+                alert('Não foi possível salvar o novo som.');
+            }
+        });
+
+        document.getElementById('reset-alarm-sound-btn').addEventListener('click', async () => {
+            if (confirm('Tem certeza que deseja restaurar o som de alarme padrão?')) {
+                try {
+                    await deleteAlarmSound();
+                    if (customAlarmSoundURL) {
+                        URL.revokeObjectURL(customAlarmSoundURL);
+                    }
+                    customAlarmSoundURL = null;
+                    document.getElementById('current-alarm-sound-name').textContent = 'Som atual: Padrão';
+                    alert('Som do alarme restaurado para o padrão.');
+                } catch (error) {
+                    console.error("Erro ao restaurar som:", error);
+                    alert('Não foi possível restaurar o som.');
+                }
+            }
+        });
+
         // --- LÓGICA DE AÇÕES DO MENU DE CONTEXTO ---
-        // MODIFICADO: Adicionada lógica para "add-subject" e "add-topic"
         function handleContextMenuAction(action, dataset) {
             const { type, id, folderId, subjectId, scheduleType } = dataset;
 
@@ -2599,7 +2982,7 @@
                             moveToTrash(itemToTrash, type);
                             renderFlashcardAreas();
                             saveData();
-                        }
+                         }
                     }
                 } else if (action === 'duplicate') {
                     const newArea = JSON.parse(JSON.stringify(area));
@@ -2618,14 +3001,21 @@
                 } else if (action === 'duplicate') {
                     openScheduleModal(scheduleType, id, true); 
                 } else if (action === 'delete') {
-                    if (confirm('Mover agendamento para a lixeira?')) { 
+                    if (confirm('Mover agendamento para a lixeira? Se for um evento que se repete, todas as futuras repetições também serão removidas.')) { 
                         const listKey = scheduleType === 'activity' ? 'activities' : 'reviews';
-                        const itemIndex = data.schedules[listKey].findIndex(i => i.id == id);
+                        const idToDelete = parseInt(id, 10);
+                        
+                        // Remove instâncias futuras
+                        data.schedules[listKey] = data.schedules[listKey].filter(evt => evt.masterId !== idToDelete);
+
+                        // Remove o item mestre
+                        const itemIndex = data.schedules[listKey].findIndex(i => i.id === idToDelete);
                         if (itemIndex > -1) {
                             const [itemToTrash] = data.schedules[listKey].splice(itemIndex, 1);
                             moveToTrash(itemToTrash, scheduleType);
                             renderSchedules(); 
                             saveData();
+                            if(calendar) calendar.refetchEvents();
                         }
                     }
                 }
@@ -2638,15 +3028,15 @@
                 if (action === 'edit') {
                     openCycleModal(id);
                 } else if (action === 'delete') {
-                     if (confirm("Mover este ciclo para a lixeira?")) {
-                        const cycleIndex = data.cycles.findIndex(c => c.id == id);
-                        if (cycleIndex > -1) {
-                            const [itemToTrash] = data.cycles.splice(cycleIndex, 1);
-                            moveToTrash(itemToTrash, type);
-                            renderCycles();
-                            saveData();
-                        }
-                    }
+                       if (confirm("Mover este ciclo para a lixeira?")) {
+                           const cycleIndex = data.cycles.findIndex(c => c.id == id);
+                           if (cycleIndex > -1) {
+                               const [itemToTrash] = data.cycles.splice(cycleIndex, 1);
+                               moveToTrash(itemToTrash, type);
+                               renderCycles();
+                               saveData();
+                           }
+                       }
                 } else if (action === 'duplicate') {
                     const newCycle = JSON.parse(JSON.stringify(cycle));
                     newCycle.id = getNextId('cycle');
