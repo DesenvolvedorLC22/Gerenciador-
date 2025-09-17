@@ -533,6 +533,43 @@
         body.dark-theme .fc-theme-standard td, body.dark-theme .fc-theme-standard th {
             border-color: var(--border-color);
         }
+
+        /* ESTILOS PARA MENU DE CONTEXTO */
+        .context-menu {
+            display: none;
+            position: absolute;
+            z-index: 2500;
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            padding: 5px 0;
+            min-width: 200px;
+        }
+        .context-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 0.9em;
+            user-select: none;
+        }
+        .context-menu-item:hover {
+            background-color: var(--primary-bg);
+        }
+        body.dark-theme .context-menu-item:hover {
+             filter: brightness(120%);
+        }
+        .context-menu-item.danger:hover {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        .context-menu-separator {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 5px 0;
+        }
         
     </style>
 </head>
@@ -566,7 +603,7 @@
 
         <div id="subjects-tab" class="tab-content active">
             <h1>Pastas, Matérias e Assuntos</h1>
-            <p>Arraste e solte os itens para reordená-los.</p>
+            <p>Arraste para reordenar. Clique com o botão direito em um item para ver as opções.</p>
             <button id="add-folder-btn">Adicionar Pasta</button>
             <div id="folders-list" class="mt-4"></div>
         </div>
@@ -598,13 +635,14 @@
         
         <div id="flashcards-tab" class="tab-content">
             <h1>Flashcards</h1>
-            <p>Arraste e solte as áreas para reordená-las.</p>
+            <p>Arraste e solte as áreas para reordená-las. Clique com o botão direito para ver as opções.</p>
             <button id="add-flashcard-area-btn">Adicionar Área de Flashcards</button>
             <div id="flashcard-areas-container" class="mt-4"></div>
         </div>
 
         <div id="schedules-tab" class="tab-content">
             <h1>Agendamentos e Revisões</h1>
+            <p>Clique com o botão direito em um item para ver as opções.</p>
             <button id="add-schedule-btn">Agendar Atividade</button>
             <button id="add-review-btn">Agendar Revisão</button>
             <div class="schedules-container mt-4">
@@ -811,6 +849,102 @@
         let currentChart = null; 
         let calendar = null;
         
+        // --- LÓGICA DO MENU DE CONTEXTO ---
+        const contextMenu = document.createElement('div');
+        contextMenu.id = 'context-menu';
+        contextMenu.className = 'context-menu';
+        document.body.appendChild(contextMenu);
+        let contextMenuTarget = null; // Armazena o elemento alvo do menu
+
+        function normalizePosition(mouseX, mouseY) {
+            const { innerWidth: windowWidth, innerHeight: windowHeight } = window;
+            const menuRect = contextMenu.getBoundingClientRect();
+            const menuWidth = menuRect.width;
+            const menuHeight = menuRect.height;
+            let normalizedX = mouseX;
+            let normalizedY = mouseY;
+            if (mouseX + menuWidth > windowWidth) {
+                normalizedX = windowWidth - menuWidth - 5;
+            }
+            if (mouseY + menuHeight > windowHeight) {
+                normalizedY = windowHeight - menuHeight - 5;
+            }
+            return { normalizedX, normalizedY };
+        }
+
+        function showContextMenu(e, targetElement) {
+            e.preventDefault();
+            e.stopPropagation();
+            contextMenu.style.display = 'none';
+            contextMenuTarget = targetElement;
+            const type = targetElement ? targetElement.dataset.type : null;
+
+            let menuHTML = '';
+            
+            // MODIFICADO: Lógica do menu atualizada para incluir opções de "Adicionar"
+            if (type === 'folder') {
+                menuHTML = `
+                    <div class="context-menu-item" data-action="add-subject">➕ Adicionar Matéria</div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item" data-action="edit">✏️ Editar</div>
+                    <div class="context-menu-item" data-action="duplicate">❏ Duplicar</div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item danger" data-action="delete">🗑️ Excluir</div>
+                `;
+            } else if (type === 'subject') {
+                menuHTML = `
+                    <div class="context-menu-item" data-action="add-topic">➕ Adicionar Assunto</div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item" data-action="edit">✏️ Editar</div>
+                    <div class="context-menu-item" data-action="duplicate">❏ Duplicar</div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item danger" data-action="delete">🗑️ Excluir</div>
+                `;
+            } else if (['topic', 'flashcard_area', 'schedule', 'cycle'].includes(type)) {
+                menuHTML = `
+                    <div class="context-menu-item" data-action="edit">✏️ Editar</div>
+                    <div class="context-menu-item" data-action="duplicate">❏ Duplicar</div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item danger" data-action="delete">🗑️ Excluir</div>
+                `;
+            }
+
+            if (menuHTML) {
+                contextMenu.innerHTML = menuHTML;
+                const { clientX: mouseX, clientY: mouseY } = e;
+                contextMenu.style.display = 'block';
+                const { normalizedX, normalizedY } = normalizePosition(mouseX, mouseY);
+                contextMenu.style.top = `${normalizedY}px`;
+                contextMenu.style.left = `${normalizedX}px`;
+            }
+        }
+
+        document.addEventListener('contextmenu', e => {
+            const targetItem = e.target.closest('[data-type]');
+            if (targetItem) {
+                const type = targetItem.dataset.type;
+                const validTypes = ['folder', 'subject', 'topic', 'flashcard_area', 'schedule', 'cycle'];
+                if(validTypes.includes(type)) {
+                    showContextMenu(e, targetItem);
+                }
+            }
+        });
+
+        window.addEventListener('click', () => {
+            if (contextMenu.style.display === 'block') {
+                contextMenu.style.display = 'none';
+            }
+        });
+        
+        contextMenu.addEventListener('click', e => {
+            const actionItem = e.target.closest('.context-menu-item');
+            if (!actionItem || !contextMenuTarget) return;
+            const action = actionItem.dataset.action;
+            handleContextMenuAction(action, contextMenuTarget.dataset);
+            contextMenu.style.display = 'none';
+        });
+
+
         // --- FUNÇÕES DE DADOS E INICIALIZAÇÃO ---
         function getNextId(type) { if (!data.nextIds[type]) data.nextIds[type] = 1; const id = data.nextIds[type]; data.nextIds[type]++; return id; }
         
@@ -1045,6 +1179,7 @@
             });
         }
 
+        // MODIFICADO: Botões "+ Matéria" e "+ Assunto" removidos do HTML
         function createItemElement(type, item, parentIds = {}) {
             const el = document.createElement('div');
             el.dataset.id = item.id;
@@ -1053,15 +1188,12 @@
             el.style.borderLeftColor = item.color;
             Object.keys(parentIds).forEach(key => { el.dataset[key] = parentIds[key]; });
             
-            let addBtn = '', toggleBtn = '', dragHandle = `<span class="drag-handle">${dragHandleIconSVG}</span>`;
+            let toggleBtn = '', dragHandle = `<span class="drag-handle">${dragHandleIconSVG}</span>`;
             if (type === 'folder' || type === 'subject') {
                 const isCollapsed = item.isCollapsed ? 'collapsed' : '';
                 toggleBtn = `<span class="toggle-btn ${isCollapsed}" style="font-size: 1.2em; user-select: none; transition: transform 0.2s; cursor:pointer;">▾</span>`;
             }
-            if (type === 'folder') addBtn = `<button class="add-subject-btn">+ Matéria</button>`;
-            if (type === 'subject') addBtn = `<button class="add-topic-btn">+ Assunto</button>`;
             
-            // MUDANÇA DE LÓGICA DE EXIBIÇÃO: Agrupado o cabeçalho em uma div .item-header
             el.innerHTML = `
                 <div class="item-header">
                     <div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">
@@ -1073,18 +1205,12 @@
                             ${item.description?`<p style="font-size: 0.9em; color: #718096; margin-top: 5px; white-space: pre-wrap; word-break: break-word;">${item.description}</p>`:''}
                         </div>
                     </div>
-                    <div class="action-buttons" style="flex-shrink:0; margin-left: 10px;">
-                        ${addBtn}
-                        <button class="edit-btn">Editar</button>
-                        <button class="duplicate-btn">Duplicar</button>
-                        <button class="delete-btn danger">Excluir</button>
-                    </div>
                 </div>`;
             return el;
         }
         
+        // MODIFICADO: Removida a lógica dos botões de adicionar, que agora está no menu de contexto.
         foldersListDiv.addEventListener('click', (e) => {
-            const button = e.target.closest('button');
             const toggle = e.target.closest('.toggle-btn');
             const itemEl = e.target.closest('[data-id]');
             if (!itemEl) return;
@@ -1100,63 +1226,6 @@
                     renderFolders();
                     initSortable();
                 }
-                return;
-            }
-
-            if (!button) return;
-            const { id, type, folderId, subjectId } = itemEl.dataset;
-
-            if (button.classList.contains('add-subject-btn')) openItemModal('subject', null, { folderId: id });
-            else if (button.classList.contains('add-topic-btn')) openItemModal('topic', null, { folderId, subjectId: id });
-            else if (button.classList.contains('edit-btn')) openItemModal(type, id, { folderId, subjectId });
-            else if (button.classList.contains('delete-btn')) {
-                if (!confirm('Mover este item e todo o seu conteúdo para a lixeira?')) return;
-                
-                if (type === 'folder') {
-                    const folderIndex = data.folders.findIndex(f => f.id == id);
-                    if (folderIndex > -1) {
-                        const [itemToTrash] = data.folders.splice(folderIndex, 1);
-                        moveToTrash(itemToTrash, type);
-                    }
-                } else if (type === 'subject') {
-                    const { folder } = findItemPath(id, type);
-                    const subjectIndex = folder.subjects.findIndex(s => s.id == id);
-                    if (subjectIndex > -1) {
-                        const [itemToTrash] = folder.subjects.splice(subjectIndex, 1);
-                        moveToTrash(itemToTrash, type, { folderId: folder.id });
-                    }
-                } else if (type === 'topic') {
-                    const { subject } = findItemPath(id, type);
-                    const topicIndex = subject.topics.findIndex(t => t.id == id);
-                    if(topicIndex > -1) {
-                        const [itemToTrash] = subject.topics.splice(topicIndex, 1);
-                        moveToTrash(itemToTrash, type, { subjectId: subject.id });
-                    }
-                }
-                renderAll(); initSortable(); saveData();
-            } else if (button.classList.contains('duplicate-btn')) {
-                function deepCloneWithNewIds(item, type) {
-                    const newItem = JSON.parse(JSON.stringify(item));
-                    newItem.id = getNextId(type);
-                    newItem.name += ' (Cópia)';
-                    if (newItem.subjects) newItem.subjects = newItem.subjects.map(s => deepCloneWithNewIds(s, 'subject'));
-                    if (newItem.topics) newItem.topics = newItem.topics.map(t => deepCloneWithNewIds(t, 'topic'));
-                    if (newItem.attachments) newItem.attachments.forEach(a => a.id = getNextId('attachment'));
-                    return newItem;
-                }
-                if (type === 'folder') {
-                    const newFolder = deepCloneWithNewIds(findItemPath(id, 'folder').folder, 'folder');
-                    data.folders.push(newFolder);
-                } else if (type === 'subject') {
-                    const { folder, subject } = findItemPath(id, 'subject');
-                    const newSubject = deepCloneWithNewIds(subject, 'subject');
-                    folder.subjects.push(newSubject);
-                } else if (type === 'topic') {
-                    const { subject, topic } = findItemPath(id, 'topic');
-                    const newTopic = deepCloneWithNewIds(topic, 'topic');
-                    subject.topics.push(newTopic);
-                }
-                renderAll(); initSortable(); saveData();
             }
         });
 
@@ -1519,7 +1588,7 @@
                 areaEl.dataset.id = area.id; 
                 areaEl.dataset.type = 'flashcard_area';
                 areaEl.style.borderTop = `5px solid ${area.color}`;
-                // MUDANÇA: Adicionado o dragHandle
+                // MODIFICADO: Removido o div.action-buttons. As ações estão no menu de contexto.
                 areaEl.innerHTML = `
                     <div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">
                         <span class="drag-handle">${dragHandleIconSVG}</span>
@@ -1527,13 +1596,8 @@
                             <h3>${area.name}</h3>
                             <p>${area.cards.length} cartão(s)</p>
                         </div>
-                    </div>
-                    <div class="action-buttons">
-                        <button class="edit-btn">Editar</button>
-                        <button class="duplicate-btn">Duplicar</button>
-                        <button class="delete-btn danger">Excluir</button>
                     </div>`;
-                areaEl.addEventListener('click', (e) => { if (!e.target.closest('button, .drag-handle')) openWorkspace(area.id); });
+                areaEl.addEventListener('click', (e) => { if (!e.target.closest('.drag-handle')) openWorkspace(area.id); });
                 flashcardAreasContainer.appendChild(areaEl);
             });
         }
@@ -1546,26 +1610,9 @@
             else data.flashcardAreas.push({ id: getNextId('flashcardArea'), name, color, cards: [] });
             renderFlashcardAreas(); saveData(); closeModal();
         });
-        flashcardAreasContainer.addEventListener('click', (e) => {
-            const button = e.target.closest('button'); if (!button) return;
-            const id = e.target.closest('.flashcard-area-card').dataset.id;
-            if (button.classList.contains('edit-btn')) {
-                const area = data.flashcardAreas.find(a => a.id == id);
-                document.getElementById('flashcard-area-modal-title').innerText = 'Editar Área';
-                document.getElementById('flashcard-area-edit-id').value = id;
-                document.getElementById('flashcard-area-name').value = area.name;
-                document.getElementById('flashcard-area-color').value = area.color;
-                openModal('flashcard-area-modal');
-            } else if (button.classList.contains('delete-btn')) {
-                if (confirm('Excluir área e flashcards?')) { data.flashcardAreas = data.flashcardAreas.filter(a => a.id != id); renderFlashcardAreas(); saveData(); }
-            } else if (button.classList.contains('duplicate-btn')) {
-                const newArea = JSON.parse(JSON.stringify(data.flashcardAreas.find(a => a.id == id)));
-                newArea.id = getNextId('flashcardArea'); newArea.name += ' (Cópia)';
-                newArea.cards.forEach(c => c.id = getNextId('flashcard'));
-                data.flashcardAreas.push(newArea);
-                renderFlashcardAreas(); saveData();
-            }
-        });
+        
+        // MODIFICADO: O listener de botões no container foi removido, pois a lógica agora está no menu de contexto.
+        
         function openWorkspace(areaId) { 
             workspace.dataset.areaId = areaId; 
             document.getElementById('workspace-title').innerText = data.flashcardAreas.find(a => a.id == areaId).name; 
@@ -1598,7 +1645,8 @@
         function createScheduleElement(item) {
             const path = findItemPath(item.topicId, 'topic');
             let name = path.topic ? `${path.folder.name} / ${path.subject.name} > ${path.topic.name}` : 'Item não encontrado';
-            return `<div class="schedule-item ${item.completed ? 'completed' : ''}">
+            // MODIFICADO: Adicionado data-attributes e removido o div.action-buttons
+            return `<div class="schedule-item ${item.completed ? 'completed' : ''}" data-id="${item.id}" data-type="schedule" data-schedule-type="${item.type}">
                         <div>
                             <strong>${name}</strong>
                             <div class="schedule-info">
@@ -1606,37 +1654,10 @@
                                 <span>Fim: ${new Date(item.endTime).toLocaleString('pt-BR')}</span>
                             </div>
                         </div>
-                        <div class="action-buttons">
-                             <button class="duplicate-btn" data-id="${item.id}" data-type="${item.type}">Duplicar</button>
-                            <button class="edit-btn" data-id="${item.id}" data-type="${item.type}">Editar</button>
-                            <button class="delete-btn danger" data-id="${item.id}" data-type="${item.type}">Excluir</button>
-                        </div>
                     </div>`;
         }
-        document.getElementById('schedules-tab').addEventListener('click', e => {
-             const button = e.target.closest('button');
-             if (!button) return;
 
-             const id = button.dataset.id;
-             const type = button.dataset.type;
-
-             if (button.classList.contains('edit-btn')) {
-                 openScheduleModal(type, id);
-             } else if (button.classList.contains('duplicate-btn')) {
-                 openScheduleModal(type, id, true); 
-             } else if (button.classList.contains('delete-btn')) {
-                 if (confirm('Mover para a lixeira?')) { 
-                     const listKey = type === 'activity' ? 'activities' : 'reviews';
-                     const itemIndex = data.schedules[listKey].findIndex(i => i.id == id);
-                     if (itemIndex > -1) {
-                         const [itemToTrash] = data.schedules[listKey].splice(itemIndex, 1);
-                         moveToTrash(itemToTrash, type);
-                         renderSchedules(); 
-                         saveData();
-                     }
-                 }
-             }
-        });
+        // MODIFICADO: O listener de botões foi removido, a lógica agora está no menu de contexto.
 
         document.getElementById('add-schedule-btn').addEventListener('click', () => openScheduleModal('activity'));
         document.getElementById('add-review-btn').addEventListener('click', () => openScheduleModal('review'));
@@ -1906,6 +1927,9 @@
             data.cycles.forEach(cycle => {
                 const card = document.createElement('div');
                 card.className = 'cycle-card';
+                // MODIFICADO: Adicionado data-type para o menu de contexto. Removidos botões de ação.
+                card.dataset.id = cycle.id;
+                card.dataset.type = 'cycle';
                 card.style.borderColor = cycle.color;
                 card.innerHTML = `
                     <div class="cycle-card-header">
@@ -1913,11 +1937,6 @@
                         <div style="width: 20px; height: 20px; border-radius: 4px; flex-shrink: 0; border: 1px solid #ccc; background-color: ${cycle.color};"></div>
                     </div>
                     <p>${cycle.steps.length} etapas, ${cycle.repetitions}x</p>
-                    <div class="action-buttons">
-                        <button class="edit-btn" data-id="${cycle.id}">Editar</button>
-                        <button class="duplicate-btn" data-id="${cycle.id}">Duplicar</button>
-                        <button class="delete-btn danger" data-id="${cycle.id}">Excluir</button>
-                    </div>
                     <button class="start-cycle-btn" data-id="${cycle.id}">Iniciar Ciclo</button>
                 `;
                 cyclesContainer.appendChild(card);
@@ -1928,7 +1947,7 @@
 
         cyclesContainer.addEventListener('click', e => {
             const target = e.target;
-            const cycleId = target.dataset.id;
+            const cycleId = target.closest('[data-id]')?.dataset.id;
             if (!cycleId) return;
 
             if (target.classList.contains('start-cycle-btn')) {
@@ -1937,23 +1956,8 @@
                     return;
                 }
                 startCycle(cycleId);
-            } else if (target.classList.contains('edit-btn')) {
-                openCycleModal(cycleId);
-            } else if (target.classList.contains('delete-btn')) {
-                if (confirm("Tem certeza que deseja excluir este ciclo?")) {
-                    data.cycles = data.cycles.filter(c => c.id != cycleId);
-                    saveData();
-                    renderCycles();
-                }
-            } else if (target.classList.contains('duplicate-btn')) {
-                const original = data.cycles.find(c => c.id == cycleId);
-                const newCycle = JSON.parse(JSON.stringify(original));
-                newCycle.id = getNextId('cycle');
-                newCycle.name += " (Cópia)";
-                data.cycles.push(newCycle);
-                saveData();
-                renderCycles();
-            }
+            } 
+            // MODIFICADO: Lógica de editar/deletar/duplicar movida para o menu de contexto.
         });
 
         function createCycleStepElement(step = {}) {
@@ -2514,7 +2518,147 @@
             reader.readAsText(file); e.target.value = '';
         });
 
-        // MUDANÇA: Lógica de arrastar e soltar com Sortable.js
+        // --- LÓGICA DE AÇÕES DO MENU DE CONTEXTO ---
+        // MODIFICADO: Adicionada lógica para "add-subject" e "add-topic"
+        function handleContextMenuAction(action, dataset) {
+            const { type, id, folderId, subjectId, scheduleType } = dataset;
+
+            // Pastas, Matérias e Assuntos
+            if (['folder', 'subject', 'topic'].includes(type)) {
+                if (action === 'add-subject') {
+                    openItemModal('subject', null, { folderId: id });
+                } else if (action === 'add-topic') {
+                    openItemModal('topic', null, { folderId, subjectId: id });
+                } else if (action === 'edit') {
+                    openItemModal(type, id, { folderId, subjectId });
+                } else if (action === 'delete') {
+                    if (!confirm('Mover este item e todo o seu conteúdo para a lixeira?')) return;
+                    if (type === 'folder') {
+                        const folderIndex = data.folders.findIndex(f => f.id == id);
+                        if (folderIndex > -1) {
+                            const [itemToTrash] = data.folders.splice(folderIndex, 1);
+                            moveToTrash(itemToTrash, type);
+                        }
+                    } else if (type === 'subject') {
+                        const { folder } = findItemPath(id, type);
+                        const subjectIndex = folder.subjects.findIndex(s => s.id == id);
+                        if (subjectIndex > -1) {
+                            const [itemToTrash] = folder.subjects.splice(subjectIndex, 1);
+                            moveToTrash(itemToTrash, type, { folderId: folder.id });
+                        }
+                    } else if (type === 'topic') {
+                        const { subject } = findItemPath(id, type);
+                        const topicIndex = subject.topics.findIndex(t => t.id == id);
+                        if(topicIndex > -1) {
+                            const [itemToTrash] = subject.topics.splice(topicIndex, 1);
+                            moveToTrash(itemToTrash, type, { subjectId: subject.id });
+                        }
+                    }
+                    renderAll(); initSortable(); saveData();
+                } else if (action === 'duplicate') {
+                    function deepCloneWithNewIds(item, cloneType) {
+                        const newItem = JSON.parse(JSON.stringify(item));
+                        newItem.id = getNextId(cloneType);
+                        newItem.name += ' (Cópia)';
+                        if (newItem.subjects) newItem.subjects = newItem.subjects.map(s => deepCloneWithNewIds(s, 'subject'));
+                        if (newItem.topics) newItem.topics = newItem.topics.map(t => deepCloneWithNewIds(t, 'topic'));
+                        if (newItem.attachments) newItem.attachments.forEach(a => a.id = getNextId('attachment'));
+                        return newItem;
+                    }
+                    if (type === 'folder') {
+                        const newFolder = deepCloneWithNewIds(findItemPath(id, 'folder').folder, 'folder');
+                        data.folders.push(newFolder);
+                    } else if (type === 'subject') {
+                        const { folder, subject } = findItemPath(id, 'subject');
+                        const newSubject = deepCloneWithNewIds(subject, 'subject');
+                        folder.subjects.push(newSubject);
+                    } else if (type === 'topic') {
+                        const { subject, topic } = findItemPath(id, 'topic');
+                        const newTopic = deepCloneWithNewIds(topic, 'topic');
+                        subject.topics.push(newTopic);
+                    }
+                    renderAll(); initSortable(); saveData();
+                }
+            }
+            // Áreas de Flashcard
+            else if (type === 'flashcard_area') {
+                const area = data.flashcardAreas.find(a => a.id == id);
+                if (!area) return;
+
+                if (action === 'edit') {
+                    document.getElementById('flashcard-area-modal-title').innerText = 'Editar Área';
+                    document.getElementById('flashcard-area-edit-id').value = id;
+                    document.getElementById('flashcard-area-name').value = area.name;
+                    document.getElementById('flashcard-area-color').value = area.color;
+                    openModal('flashcard-area-modal');
+                } else if (action === 'delete') {
+                    if (confirm('Mover esta área de flashcards para a lixeira?')) {
+                        const areaIndex = data.flashcardAreas.findIndex(a => a.id == id);
+                         if (areaIndex > -1) {
+                            const [itemToTrash] = data.flashcardAreas.splice(areaIndex, 1);
+                            moveToTrash(itemToTrash, type);
+                            renderFlashcardAreas();
+                            saveData();
+                        }
+                    }
+                } else if (action === 'duplicate') {
+                    const newArea = JSON.parse(JSON.stringify(area));
+                    newArea.id = getNextId('flashcardArea');
+                    newArea.name += ' (Cópia)';
+                    newArea.cards.forEach(c => c.id = getNextId('flashcard'));
+                    data.flashcardAreas.push(newArea);
+                    renderFlashcardAreas();
+                    saveData();
+                }
+            }
+            // Agendamentos
+            else if (type === 'schedule') {
+                if (action === 'edit') {
+                    openScheduleModal(scheduleType, id);
+                } else if (action === 'duplicate') {
+                    openScheduleModal(scheduleType, id, true); 
+                } else if (action === 'delete') {
+                    if (confirm('Mover agendamento para a lixeira?')) { 
+                        const listKey = scheduleType === 'activity' ? 'activities' : 'reviews';
+                        const itemIndex = data.schedules[listKey].findIndex(i => i.id == id);
+                        if (itemIndex > -1) {
+                            const [itemToTrash] = data.schedules[listKey].splice(itemIndex, 1);
+                            moveToTrash(itemToTrash, scheduleType);
+                            renderSchedules(); 
+                            saveData();
+                        }
+                    }
+                }
+            }
+            // Ciclos
+            else if (type === 'cycle') {
+                const cycle = data.cycles.find(c => c.id == id);
+                if (!cycle) return;
+
+                if (action === 'edit') {
+                    openCycleModal(id);
+                } else if (action === 'delete') {
+                     if (confirm("Mover este ciclo para a lixeira?")) {
+                        const cycleIndex = data.cycles.findIndex(c => c.id == id);
+                        if (cycleIndex > -1) {
+                            const [itemToTrash] = data.cycles.splice(cycleIndex, 1);
+                            moveToTrash(itemToTrash, type);
+                            renderCycles();
+                            saveData();
+                        }
+                    }
+                } else if (action === 'duplicate') {
+                    const newCycle = JSON.parse(JSON.stringify(cycle));
+                    newCycle.id = getNextId('cycle');
+                    newCycle.name += " (Cópia)";
+                    data.cycles.push(newCycle);
+                    renderCycles();
+                    saveData();
+                }
+            }
+        }
+
+        // --- LÓGICA DE ARRASTAR E SOLTAR ---
         function initSortable() {
             // Arrastar Áreas de Flashcard
             new Sortable(document.getElementById('flashcard-areas-container'), {
@@ -2524,7 +2668,6 @@
                     const item = data.flashcardAreas.splice(evt.oldIndex, 1)[0];
                     data.flashcardAreas.splice(evt.newIndex, 0, item);
                     saveData();
-                    // Não precisa re-renderizar tudo, a lib já atualiza o DOM
                 }
             });
 
@@ -2543,7 +2686,7 @@
             document.querySelectorAll('.content-container[data-type="folder"]').forEach(container => {
                 const folderId = parseInt(container.dataset.parentId, 10);
                 new Sortable(container, {
-                    group: 'subjects', // Permite mover matérias entre pastas (opcional)
+                    group: 'subjects',
                     animation: 150,
                     handle: '.drag-handle',
                     onEnd: (evt) => {
@@ -2561,7 +2704,7 @@
             document.querySelectorAll('.content-container[data-type="subject"]').forEach(container => {
                 const subjectId = parseInt(container.dataset.parentId, 10);
                 new Sortable(container, {
-                    group: 'topics', // Permite mover assuntos entre matérias (opcional)
+                    group: 'topics',
                     animation: 150,
                     handle: '.drag-handle',
                     onEnd: (evt) => {
@@ -2791,4 +2934,3 @@
     </script>
 </body>
 </html>
-
