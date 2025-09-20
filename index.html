@@ -44,6 +44,147 @@
             --border-color: #e2e8f0;
             --sidebar-width: 220px;
             --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* --- ESTILOS PARA CONTROLES DE VISUALIZAÇÃO E BUSCA --- */
+.view-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.view-controls .main-actions {
+    margin-left: auto;
+}
+
+.view-mode-toggle {
+    display: flex;
+    gap: 5px;
+    background-color: var(--primary-bg);
+    padding: 5px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+.view-mode-toggle .view-btn {
+    background-color: transparent;
+    border: none;
+    padding: 6px;
+    border-radius: 5px;
+    cursor: pointer;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.view-mode-toggle .view-btn:hover {
+    background-color: var(--border-color);
+}
+.view-mode-toggle .view-btn.active {
+    background-color: var(--accent-color);
+    color: white;
+}
+.main-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.search-container {
+    position: relative;
+}
+.search-icon {
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.search-input {
+    width: 0;
+    padding: 8px 0;
+    border: none;
+    border-bottom: 2px solid var(--accent-color);
+    background-color: transparent;
+    position: absolute;
+    left: 100%; 
+    top: 50%;
+    transform: translateY(-50%);
+    transition: all 0.3s ease;
+    visibility: hidden;
+    opacity: 0;
+}
+.search-input.active {
+    width: 220px;
+    padding: 8px;
+    visibility: visible;
+    opacity: 1;
+}
+
+/* --- ESTILOS PARA VISUALIZAÇÃO EM GRADE (BLOCOS) --- */
+.grid-view {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+}
+/* Adaptações para itens em modo grade */
+.grid-view .folder-item, .grid-view .subject-item, .grid-view .topic-item, .grid-view .flashcard-area-card {
+    margin-left: 0; /* Remove a indentação no modo grade */
+}
+.grid-view .folder-item {
+    display: flex;
+    flex-direction: column;
+}
+.grid-view .subject-item {
+    margin-left: 0;
+}
+.grid-view .topic-item {
+    margin-left: 0;
+}
+.grid-view .flashcard-area-card {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+/* --- ESTILOS PARA VISUALIZAÇÃO EM CONJUNTO --- */
+.set-item-card {
+    background-color: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    border-left-width: 5px;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.set-item-card h3 {
+    margin: 0 0 10px 0;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+}
+.set-item-card .set-content {
+    display: none; /* Começa oculto */
+    padding-top: 15px;
+    margin-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* --- ESTILOS PARA O MODAL DE CONJUNTO --- */
+#set-items-list .set-item-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 4px;
+}
+#set-items-list .set-item-option:hover {
+    background-color: var(--primary-bg);
+}
+#set-items-list .set-item-option input {
+    width: auto;
+}
+#set-items-list .set-item-option label {
+    font-weight: normal;
+    margin: 0;
+}
         }
 
         body.dark-theme {
@@ -679,6 +820,25 @@
             border-color: var(--accent-color);
         }
         /* --- FIM DA ALTERAÇÃO --- */
+       /* Regra para animar o container ao abrir e fechar */
+.content-container {
+    transition: all 0.4s ease-out;
+    max-height: 10000px; /* Um valor alto para garantir que todo conteúdo caiba */
+    overflow: hidden;
+    }
+
+   /* Regra para quando o container estiver recolhido */
+.content-container.collapsed {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    border-top: none;
+    border-bottom: none;
+    opacity: 0;
+   }
+        
     </style>
 </head>
 <body>
@@ -712,7 +872,25 @@
         <div id="subjects-tab" class="tab-content active">
             <h1>Pastas, Matérias e Assuntos</h1>
             <p>Arraste para reordenar. Clique com o botão direito em um item para ver as opções.</p>
-            <button id="add-folder-btn">Adicionar Pasta</button>
+
+<div class="view-controls">
+    <div id="folder-view-mode-toggle" class="view-mode-toggle">
+        <button class="view-btn active" data-view="list" title="Visualizar como Lista"></button>
+        <button class="view-btn" data-view="grid" title="Visualizar como Blocos"></button>
+        <button class="view-btn" data-view="set" title="Visualizar Conjuntos"></button>
+    </div>
+    <div class="search-container">
+        <button id="folder-search-icon" class="search-icon"></button>
+        <input type="search" id="folder-search-input" class="search-input" placeholder="Buscar pastas...">
+    </div>
+    <div class="main-actions">
+        <button id="add-folder-btn">Adicionar Pasta</button>
+        <button id="add-folder-set-btn" style="display: none;">Criar Conjunto</button>
+    </div>
+</div>
+
+
+
             <div id="folders-list" class="mt-4"></div>
         </div>
         
@@ -744,7 +922,25 @@
         <div id="flashcards-tab" class="tab-content">
             <h1>Flashcards</h1>
             <p>Arraste e solte as áreas para reordená-las. Clique com o botão direito para ver as opções.</p>
-            <button id="add-flashcard-area-btn">Adicionar Área de Flashcards</button>
+
+
+ <div class="view-controls">
+    <div id="flashcard-view-mode-toggle" class="view-mode-toggle">
+        <button class="view-btn active" data-view="list" title="Visualizar como Lista"></button>
+        <button class="view-btn" data-view="grid" title="Visualizar como Blocos"></button>
+        <button class="view-btn" data-view="set" title="Visualizar Conjuntos"></button>
+    </div>
+    <div class="search-container">
+        <button id="flashcard-search-icon" class="search-icon"></button>
+        <input type="search" id="flashcard-search-input" class="search-input" placeholder="Buscar áreas...">
+    </div>
+    <div class="main-actions">
+        <button id="add-flashcard-area-btn">Adicionar Área de Flashcards</button>
+        <button id="add-flashcard-set-btn" style="display: none;">Criar Conjunto</button>
+    </div>
+</div>
+
+
             <div id="flashcard-areas-container" class="mt-4"></div>
         </div>
 
@@ -940,19 +1136,45 @@
             </form>
         </div>
     </div>
+    </div>
+</div>
 
-    <div id="trash-modal" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <h2>Lixeira</h2>
-            <p>Itens excluídos são mantidos aqui. Você pode restaurá-los ou excluí-los permanentemente.</p>
-            <div id="trash-list" style="margin-top: 20px; max-height: 60vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 5px; min-height: 100px;"></div>
-            <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
-                <button id="empty-trash-btn" class="danger">Esvaziar Lixeira</button>
-                <button type="button" class="close-modal danger">Fechar</button>
+<div id="set-modal" class="modal">
+    <div class="modal-content">
+        <h2 id="set-modal-title">Novo Conjunto</h2>
+        <form id="set-form">
+            <input type="hidden" id="set-edit-id">
+            <input type="hidden" id="set-type">
+            <div class="form-group">
+                <label for="set-name">Nome do Conjunto:</label>
+                <input type="text" id="set-name" required>
             </div>
+            <div class="form-group">
+                <label for="set-color">Cor:</label>
+                <input type="color" id="set-color" value="#a0aec0">
+            </div>
+            <h3>Itens para incluir:</h3>
+            <div id="set-items-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); padding: 10px; border-radius: 5px;">
+                </div>
+            <div class="action-buttons" style="margin-top:20px; text-align:right; display:flex; justify-content:flex-end; gap:10px;">
+                <button type="submit" class="success">Salvar Conjunto</button>
+                <button type="button" class="close-modal danger">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="trash-modal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <h2>Lixeira</h2>
+        <p>Itens excluídos são mantidos aqui. Você pode restaurá-los ou excluí-los permanentemente.</p>
+        <div id="trash-list" style="margin-top: 20px; max-height: 60vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 5px; min-height: 100px;"></div>
+        <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <button id="empty-trash-btn" class="danger">Esvaziar Lixeira</button>
+            <button type="button" class="close-modal danger">Fechar</button>
         </div>
     </div>
-    
+</div>    
     <div id="viewer-taskbar">
         <div id="taskbar-items-container" style="display: flex; gap: 8px; flex-grow: 1; overflow-x: auto;"></div>
         <div id="taskbar-controls">
@@ -969,15 +1191,26 @@
 
         // --- ESTADO GLOBAL E VARIÁVEIS ---
         let data = {
-            folders: [], flashcardAreas: [],
-            schedules: { activities: [], reviews: [] },
-            cycles: [], studyHistory: [],
-            trash: [],
-            nextIds: { folder: 1, subject: 1, topic: 1, attachment: 1, flashcardArea: 1, flashcard: 1, schedule: 1, cycle: 1, cycleItem: 1, history: 1 }
-        };
-        
+          folders: [], 
+          flashcardAreas: [],
+          sets: { folders: [], flashcards: [] }, // Garante que 'sets' exista
+         schedules: { activities: [], reviews: [] },
+         cycles: [], 
+        studyHistory: [],
+        trash: [],
+        nextIds: { 
+        folder: 1, subject: 1, topic: 1, attachment: 1, 
+        flashcardArea: 1, flashcard: 1, schedule: 1, 
+        cycle: 1, cycleItem: 1, history: 1, set: 1 // Garante que 'nextIds.set' exista
+        }
+      };
+        let currentFolderView = 'list';
+        let currentFlashcardView = 'list';
         const dragHandleIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>`;
-        
+        const searchIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+const listViewIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`;
+const gridViewIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`;
+const setViewIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>`;
         let rootDirectoryHandle = null, db, alarmInterval = null, audioContext, activeAlarmSound = null;
         let timerInterval = null, timerState = 'stopped', timeLeft = 0, initialDuration = 0, currentTimerType = 'study';
         let isCycleRunning = false, currentCycleId, currentCycleRep, currentCycleStepIndex;
@@ -1035,7 +1268,7 @@
                     <div class="context-menu-separator"></div>
                     <div class="context-menu-item danger" data-action="delete">🗑️ Excluir</div>
                 `;
-            } else if (['topic', 'flashcard_area', 'cycle'].includes(type)) {
+            } else if (['topic', 'flashcard_area', 'cycle', 'set'].includes(type)) {
                 menuHTML = `
                     <div class="context-menu-item" data-action="edit">✏️ Editar</div>
                     <div class="context-menu-item" data-action="duplicate">❏ Duplicar</div>
@@ -1064,15 +1297,20 @@
         }
 
         document.addEventListener('contextmenu', e => {
-            const targetItem = e.target.closest('[data-type]');
-            if (targetItem) {
-                const type = targetItem.dataset.type;
-                const validTypes = ['folder', 'subject', 'topic', 'flashcard_area', 'schedule', 'cycle'];
-                if(validTypes.includes(type)) {
-                    showContextMenu(e, targetItem);
-                }
-            }
-        });
+        const targetItem = e.target.closest('[data-type]');
+        if (targetItem) {
+     	const type = targetItem.dataset.type;
+        
+        // A MUDANÇA ESTÁ AQUI: adicionamos 'set' à lista de tipos válidos.
+        const validTypes = ['folder', 'subject', 'topic', 'flashcard_area', 'schedule', 'cycle', 'set']; 
+        
+        if(validTypes.includes(type)) {
+            showContextMenu(e, targetItem);
+        }
+    }
+           
+
+         });
 
         window.addEventListener('click', () => {
             if (contextMenu.style.display === 'block') {
@@ -1095,23 +1333,40 @@
         function saveData() { try { localStorage.setItem('studyOrganizerData_v4', JSON.stringify(data)); } catch (e) { console.error("Erro ao salvar dados:", e); } }
         
         function loadData() {
-            const savedData = localStorage.getItem('studyOrganizerData_v4');
-            if (savedData) {
-                const parsedData = JSON.parse(savedData);
-                const defaultStructure = { folders: [], flashcardAreas: [], schedules: { activities: [], reviews: [] }, cycles: [], studyHistory: [], trash: [], nextIds: { ...data.nextIds } };
-                data = { ...defaultStructure, ...parsedData };
-                data.nextIds = { ...defaultStructure.nextIds, ...(parsedData.nextIds || {}) };
-                if (!data.trash) data.trash = [];
+    const savedData = localStorage.getItem('studyOrganizerData_v4');
+    if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        
+        // Estrutura padrão para garantir que todas as propriedades existam
+        const defaultStructure = {
+            folders: [], 
+            flashcardAreas: [],
+            sets: { folders: [], flashcards: [] }, // Garante que 'sets' e suas sub-propriedades existam
+            schedules: { activities: [], reviews: [] },
+            cycles: [], 
+            studyHistory: [],
+            trash: [],
+            nextIds: { ...data.nextIds } // Pega os 'nextIds' padrões
+        };
 
-                // Migration logic for schedule properties
-                const migrateSchedule = item => {
-                    if (typeof item.active === 'undefined') item.active = true;
-                    if (typeof item.repeatDays === 'undefined') item.repeatDays = [];
-                };
-                (data.schedules.activities || []).forEach(migrateSchedule);
-                (data.schedules.reviews || []).forEach(migrateSchedule);
-            }
-        }
+        // Mescla os dados salvos com a estrutura padrão
+        data = { ...defaultStructure, ...parsedData };
+
+        // Garante que as sub-estruturas também sejam mescladas corretamente
+        data.sets = { ...defaultStructure.sets, ...(parsedData.sets || {}) };
+        data.schedules = { ...defaultStructure.schedules, ...(parsedData.schedules || {}) };
+        data.nextIds = { ...defaultStructure.nextIds, ...(parsedData.nextIds || {}) };
+        
+        // Lógica de migração (que já existia)
+        if (!data.trash) data.trash = [];
+        const migrateSchedule = item => {
+            if (typeof item.active === 'undefined') item.active = true;
+            if (typeof item.repeatDays === 'undefined') item.repeatDays = [];
+        };
+        (data.schedules.activities || []).forEach(migrateSchedule);
+        (data.schedules.reviews || []).forEach(migrateSchedule);
+    }
+}
 
         async function initializeApp() {
             try {
@@ -1121,6 +1376,8 @@
                 loadData();
                 updateDirectoryStatus();
                 renderAll();
+                setupViewControls();
+                setupSettingsModalListeners();
                 initSortable();
                 startAlarmSystem();
                 setupSidebarToggle();
@@ -1245,6 +1502,94 @@
             });
         }
 
+
+        // A NOVA FUNÇÃO TÁ AQUI 
+   
+         function setupSettingsModalListeners() {
+          console.log("TESTE 1: A função setupSettingsModalListeners FOI CHAMADA.");
+
+    document.getElementById('settings-button').addEventListener('click', () => {
+        openModal('settings-modal');
+    });
+
+    const trashButton = document.getElementById('open-trash-btn');
+    console.log("TESTE 2: O botão da lixeira foi encontrado?", trashButton);
+    
+    if (trashButton) {
+        trashButton.addEventListener('click', () => {
+            console.log("TESTE 3: O botão da lixeira FOI CLICADO.");
+            renderTrash();
+            openModal('trash-modal');
+        });
+    }
+
+    // O resto da função continua igual...
+    document.getElementById('export-data-btn').addEventListener('click', () => { 
+        const dataStr = JSON.stringify(data); 
+        const blob = new Blob([dataStr], { type: 'application/json' }); 
+        const url = URL.createObjectURL(blob); 
+        const link = document.createElement('a'); 
+        link.href = url; 
+        link.download = `backup_estudos_${new Date().toISOString().slice(0, 10)}.json`; 
+        link.click(); 
+        URL.revokeObjectURL(url); 
+    });
+
+    document.getElementById('import-file-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file || !confirm("ATENÇÃO: Importar substituirá TODOS os dados atuais. Continuar?")) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const importedData = JSON.parse(event.target.result);
+                if (importedData?.folders && importedData?.nextIds) { 
+                    data = importedData; 
+                    saveData(); 
+                    alert("Dados importados! A página será recarregada."); 
+                    location.reload(); 
+                } else { 
+                    alert("Erro: Arquivo de backup inválido."); 
+                }
+            } catch (err) { 
+                alert("Erro ao processar o arquivo."); 
+            }
+        };
+        reader.readAsText(file); 
+        e.target.value = '';
+    });
+
+    document.getElementById('alarm-sound-input').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            await saveAlarmSound(file);
+            await loadAlarmSound();
+            alert('Novo som de alarme salvo com sucesso!');
+        } catch (error) {
+            console.error("Erro ao salvar som do alarme:", error);
+            alert('Não foi possível salvar o novo som.');
+        }
+    });
+
+    document.getElementById('reset-alarm-sound-btn').addEventListener('click', async () => {
+        if (confirm('Tem certeza que deseja restaurar o som de alarme padrão?')) {
+            try {
+                await deleteAlarmSound();
+                if (customAlarmSoundURL) {
+                    URL.revokeObjectURL(customAlarmSoundURL);
+                }
+                customAlarmSoundURL = null;
+                document.getElementById('current-alarm-sound-name').textContent = 'Som atual: Padrão';
+                alert('Som do alarme restaurado para o padrão.');
+            } catch (error) {
+                console.error("Erro ao restaurar som:", error);
+                alert('Não foi possível restaurar o som.');
+            }
+        }
+    });
+
+   }
+
         function setupTaskbarToggle() {
             const taskbar = document.getElementById('viewer-taskbar');
             const toggleBtn = document.getElementById('taskbar-toggle-btn');
@@ -1286,14 +1631,225 @@
                 }
             });
         });
-        function openModal(modalId) { 
-            document.getElementById(modalId).style.display = 'flex';
-        }
-        function closeModal() { modals.forEach(modal => modal.style.display = 'none'); }
-        document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', closeModal));
-        window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) closeModal(); });
+
+       function openModal(modalId) { 
+       const modal = document.getElementById(modalId);
+     if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+         function closeModal() { 
+    modals.forEach(modal => modal.style.display = 'none'); 
+}
+
+// CORREÇÃO APLICADA AQUI:
+// Adicionamos uma verificação para os botões com a classe 'close-modal'
+document.addEventListener('click', (e) => {
+    // Se o clique foi diretamente no fundo cinza (e.target.matches('.modal'))
+    // OU em qualquer botão de fechar (e.target.closest('.close-modal'))
+    if (e.target.matches('.modal') || e.target.closest('.close-modal')) {
+        closeModal();
+    }
+});
+
+
+
         
         // --- LÓGICA DE PASTAS / MATÉRIAS / ASSUNTOS ---
+        function setupViewControls() {
+    // --- Lógica para Aba Pastas ---
+    const folderViewToggle = document.getElementById('folder-view-mode-toggle');
+    folderViewToggle.addEventListener('click', e => {
+        const button = e.target.closest('.view-btn');
+        if (!button) return;
+        currentFolderView = button.dataset.view;
+        folderViewToggle.querySelector('.active').classList.remove('active');
+        button.classList.add('active');
+        document.getElementById('add-folder-btn').style.display = currentFolderView !== 'set' ? 'inline-block' : 'none';
+        document.getElementById('add-folder-set-btn').style.display = currentFolderView === 'set' ? 'inline-block' : 'none';
+        renderFolders();
+    });
+
+    document.getElementById('folder-search-icon').addEventListener('click', () => {
+        document.getElementById('folder-search-input').classList.toggle('active');
+        document.getElementById('folder-search-input').focus();
+    });
+
+    document.getElementById('folder-search-input').addEventListener('input', () => {
+        renderFolders();
+    });
+    
+    document.getElementById('add-folder-set-btn').addEventListener('click', () => openSetModal('folders'));
+
+    // --- Lógica para Aba Flashcards ---
+    const flashcardViewToggle = document.getElementById('flashcard-view-mode-toggle');
+    flashcardViewToggle.addEventListener('click', e => {
+        const button = e.target.closest('.view-btn');
+        if (!button) return;
+        currentFlashcardView = button.dataset.view;
+        flashcardViewToggle.querySelector('.active').classList.remove('active');
+        button.classList.add('active');
+        document.getElementById('add-flashcard-area-btn').style.display = currentFlashcardView !== 'set' ? 'inline-block' : 'none';
+        document.getElementById('add-flashcard-set-btn').style.display = currentFlashcardView === 'set' ? 'inline-block' : 'none';
+        renderFlashcardAreas();
+    });
+    
+    document.getElementById('flashcard-search-icon').addEventListener('click', () => {
+        document.getElementById('flashcard-search-input').classList.toggle('active');
+        document.getElementById('flashcard-search-input').focus();
+    });
+
+    document.getElementById('flashcard-search-input').addEventListener('input', () => {
+        renderFlashcardAreas();
+    });
+    
+    document.getElementById('add-flashcard-set-btn').addEventListener('click', () => openSetModal('flashcards'));
+
+    // Adicionar ícones aos botões
+    folderViewToggle.querySelector('[data-view="list"]').innerHTML = listViewIconSVG;
+    folderViewToggle.querySelector('[data-view="grid"]').innerHTML = gridViewIconSVG;
+    folderViewToggle.querySelector('[data-view="set"]').innerHTML = setViewIconSVG;
+    document.getElementById('folder-search-icon').innerHTML = searchIconSVG;
+    
+    flashcardViewToggle.querySelector('[data-view="list"]').innerHTML = listViewIconSVG;
+    flashcardViewToggle.querySelector('[data-view="grid"]').innerHTML = gridViewIconSVG;
+    flashcardViewToggle.querySelector('[data-view="set"]').innerHTML = setViewIconSVG;
+    document.getElementById('flashcard-search-icon').innerHTML = searchIconSVG;
+}
+
+function openSetModal(type, setId = null) {
+   const form = document.getElementById('set-form');
+    form.reset();
+    document.getElementById('set-type').value = type;
+    document.getElementById('set-edit-id').value = setId || '';
+
+    const itemsListDiv = document.getElementById('set-items-list');
+    itemsListDiv.innerHTML = '';
+    
+    let sourceItems = [];
+    let existingItemIds = new Set();
+
+    if (type === 'folders') {
+        sourceItems = data.folders;
+        document.getElementById('set-modal-title').textContent = setId ? 'Editar Conjunto de Pastas' : 'Novo Conjunto de Pastas';
+    } else { // flashcards
+        sourceItems = data.flashcardAreas;
+        document.getElementById('set-modal-title').textContent = setId ? 'Editar Conjunto de Áreas' : 'Novo Conjunto de Áreas';
+    }
+
+    if (setId) {
+        const set = data.sets[type].find(s => s.id == setId);
+        if (set) {
+            document.getElementById('set-name').value = set.name;
+            document.getElementById('set-color').value = set.color;
+            existingItemIds = new Set(set.itemIds);
+        }
+    }
+
+    sourceItems.forEach(item => {
+        const checked = existingItemIds.has(item.id) ? 'checked' : '';
+        itemsListDiv.innerHTML += `
+            <div class="set-item-option">
+                <input type="checkbox" id="setItem-${item.id}" value="${item.id}" ${checked}>
+                <label for="setItem-${item.id}">${item.name}</label>
+            </div>
+        `;
+    });
+
+    openModal('set-modal');
+}
+
+document.getElementById('set-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const type = document.getElementById('set-type').value;
+    const editId = document.getElementById('set-edit-id').value;
+    
+    const selectedIds = Array.from(document.querySelectorAll('#set-items-list input:checked')).map(input => parseInt(input.value));
+
+    const setData = {
+        name: document.getElementById('set-name').value,
+        color: document.getElementById('set-color').value,
+        itemIds: selectedIds,
+    };
+
+    if (editId) {
+        const set = data.sets[type].find(s => s.id == editId);
+        Object.assign(set, setData);
+    } else {
+        setData.id = getNextId('set');
+        data.sets[type].push(setData);
+    }
+
+    saveData();
+    closeModal();
+    if (type === 'folders') {
+        renderFolders();
+    } else {
+        renderFlashcardAreas();
+    }
+});
+
+
+          // SUBSTITUA SUA FUNÇÃO 'renderFolders' INTEIRA PELA VERSÃO CORRIGIDA ABAIXO
+function renderFolders() {
+    const viewMode = currentFolderView;
+    const searchQuery = document.getElementById('folder-search-input').value.toLowerCase();
+    
+    foldersListDiv.innerHTML = '';
+    foldersListDiv.className = viewMode === 'grid' ? 'grid-view' : '';
+
+    if (viewMode === 'set') {
+        renderSetList('folders', foldersListDiv);
+        // Não há mais um 'return' aqui, permitindo que o código continue
+    } else {
+        let filteredFolders = data.folders.filter(folder => folder.name.toLowerCase().includes(searchQuery));
+
+        if (filteredFolders.length === 0) {
+            foldersListDiv.innerHTML = '<p style="text-align:center;">Nenhuma pasta encontrada.</p>';
+            return; // Aqui pode retornar, pois não há nada para ordenar
+        }
+
+        filteredFolders.forEach(folder => {
+            const folderEl = createItemElement('folder', folder);
+            
+            const folderContent = document.createElement('div');
+            folderContent.className = 'content-container';
+            folderContent.dataset.parentId = folder.id;
+            folderContent.dataset.type = 'folder';
+            
+            if (folder.isCollapsed) {
+                folderContent.classList.add('collapsed');
+            }
+            
+            folder.subjects.forEach(subject => {
+                const subjectEl = createItemElement('subject', subject, { folderId: folder.id });
+                const subjectContent = document.createElement('div');
+                subjectContent.className = 'content-container';
+                subjectContent.dataset.parentId = subject.id;
+                subjectContent.dataset.type = 'subject';
+                
+                if(subject.isCollapsed) {
+                    subjectContent.classList.add('collapsed');
+                }
+
+                subject.topics.forEach(topic => {
+                    subjectContent.appendChild(createItemElement('topic', topic, { folderId: folder.id, subjectId: subject.id }));
+                });
+                
+                subjectEl.appendChild(subjectContent);
+                folderContent.appendChild(subjectEl);
+            });
+            folderEl.appendChild(folderContent);
+            foldersListDiv.appendChild(folderEl);
+        });
+    }
+
+    // Esta linha agora será executada em TODOS os modos de visualização
+    initSortable();
+}
+
+
+
         const itemForm = document.getElementById('item-form');
         const foldersListDiv = document.getElementById('folders-list');
         document.getElementById('change-color-button').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('color-picker-input').click(); });
@@ -1349,85 +1905,222 @@
             renderAll(); initSortable(); saveData(); closeModal();
         });
 
-        function renderFolders() {
-            foldersListDiv.innerHTML = '';
-            data.folders.forEach(folder => {
-                const folderEl = createItemElement('folder', folder);
-                
-                const folderContent = document.createElement('div');
-                folderContent.className = 'content-container';
-                folderContent.dataset.parentId = folder.id;
-                folderContent.dataset.type = 'folder';
-                if (folder.isCollapsed) folderContent.classList.add('collapsed');
-                
-                folder.subjects.forEach(subject => {
-                    const subjectEl = createItemElement('subject', subject, { folderId: folder.id });
-                    
-                    const subjectContent = document.createElement('div');
-                    subjectContent.className = 'content-container';
-                    subjectContent.dataset.parentId = subject.id;
-                    subjectContent.dataset.type = 'subject';
-                    if(subject.isCollapsed) subjectContent.classList.add('collapsed');
 
-                    subject.topics.forEach(topic => {
-                        subjectContent.appendChild(createItemElement('topic', topic, { folderId: folder.id, subjectId: subject.id }));
-                    });
-                    
-                    subjectEl.appendChild(subjectContent);
-                    folderContent.appendChild(subjectEl);
+         function renderFolders() {
+    const viewMode = currentFolderView;
+    const searchQuery = document.getElementById('folder-search-input').value.toLowerCase();
+    
+    foldersListDiv.innerHTML = '';
+    foldersListDiv.className = viewMode === 'grid' ? 'grid-view' : '';
+
+    if (viewMode === 'set') {
+        renderSetList('folders', foldersListDiv);
+    } else {
+        let filteredFolders = data.folders.filter(folder => folder.name.toLowerCase().includes(searchQuery));
+
+        if (filteredFolders.length === 0) {
+            foldersListDiv.innerHTML = '<p style="text-align:center;">Nenhuma pasta encontrada.</p>';
+            return; // Retorna aqui pois não há nada para ordenar
+        }
+
+        filteredFolders.forEach(folder => {
+            const folderEl = createItemElement('folder', folder);
+            
+            const folderContent = document.createElement('div');
+            folderContent.className = 'content-container';
+            folderContent.dataset.parentId = folder.id;
+            folderContent.dataset.type = 'folder';
+            if (folder.isCollapsed) folderContent.classList.add('collapsed');
+            
+            folder.subjects.forEach(subject => {
+                const subjectEl = createItemElement('subject', subject, { folderId: folder.id });
+                const subjectContent = document.createElement('div');
+                subjectContent.className = 'content-container';
+                subjectContent.dataset.parentId = subject.id;
+                subjectContent.dataset.type = 'subject';
+                if(subject.isCollapsed) subjectContent.classList.add('collapsed');
+
+                subject.topics.forEach(topic => {
+                    subjectContent.appendChild(createItemElement('topic', topic, { folderId: folder.id, subjectId: subject.id }));
                 });
-                folderEl.appendChild(folderContent);
-                foldersListDiv.appendChild(folderEl);
+                
+                subjectEl.appendChild(subjectContent);
+                folderContent.appendChild(subjectEl);
+            });
+            folderEl.appendChild(folderContent);
+            foldersListDiv.appendChild(folderEl);
+        });
+    }
+
+    // A chamada para initSortable agora acontece depois que a tela está 100% desenhada.
+    initSortable();
+}
+   
+
+
+ // SUBSTITUA SUA FUNÇÃO 'renderSetList' INTEIRA PELA VERSÃO FINAL ABAIXO:
+
+function renderSetList(type, containerDiv) {
+    const sets = data.sets[type] || [];
+    containerDiv.innerHTML = '';
+    
+    if (sets.length === 0) {
+        containerDiv.innerHTML = `<p style="text-align:center;">Nenhum conjunto criado. Clique em "Criar Conjunto" para começar.</p>`;
+        return;
+    }
+
+    sets.forEach(set => {
+        const setCard = document.createElement('div');
+        setCard.className = 'set-item-card';
+        setCard.style.borderLeftColor = set.color;
+        setCard.dataset.id = set.id;
+        setCard.dataset.type = 'set';
+
+        const setHeader = document.createElement('h3');
+        setHeader.textContent = set.name;
+        setCard.appendChild(setHeader);
+
+        const setContent = document.createElement('div');
+        setContent.className = 'set-content';
+        // Começa escondido, o clique vai mostrar
+        setContent.style.display = 'none'; 
+        
+        let itemsInSet = [];
+        if (type === 'folders') {
+            itemsInSet = data.folders.filter(f => set.itemIds.includes(f.id));
+            itemsInSet.forEach(folder => {
+                const folderEl = createItemElement('folder', folder);
+                setContent.appendChild(folderEl);
+            });
+        } else { // flashcards
+            itemsInSet = data.flashcardAreas.filter(a => set.itemIds.includes(a.id));
+            itemsInSet.forEach(area => {
+                const areaEl = createItemElement('flashcard_area', area);
+                setContent.appendChild(areaEl);
             });
         }
 
-        function createItemElement(type, item, parentIds = {}) {
-            const el = document.createElement('div');
-            el.dataset.id = item.id;
-            el.dataset.type = type;
-            el.className = `${type}-item`;
-            el.style.borderLeftColor = item.color;
-            Object.keys(parentIds).forEach(key => { el.dataset[key] = parentIds[key]; });
-            
-            let toggleBtn = '', dragHandle = `<span class="drag-handle">${dragHandleIconSVG}</span>`;
-            if (type === 'folder' || type === 'subject') {
-                const isCollapsed = item.isCollapsed ? 'collapsed' : '';
-                toggleBtn = `<span class="toggle-btn ${isCollapsed}" style="font-size: 1.2em; user-select: none; transition: transform 0.2s; cursor:pointer;">▾</span>`;
-            }
-            
-            el.innerHTML = `
-                <div class="item-header">
-                    <div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">
-                        ${toggleBtn}
-                        ${dragHandle}
-                        <div style="width: 18px; height: 18px; border-radius: 4px; margin: 0 12px; border: 1px solid #ccc; flex-shrink: 0; background-color:${item.color};"></div>
-                        <div style="min-width:0;">
-                            <strong>${item.name}</strong>
-                            ${item.description?`<p style="font-size: 0.9em; color: #718096; margin-top: 5px; white-space: pre-wrap; word-break: break-word;">${item.description}</p>`:''}
-                        </div>
-                    </div>
-                </div>`;
-            return el;
+        if (itemsInSet.length === 0) {
+            setContent.innerHTML = '<p>Este conjunto está vazio.</p>';
         }
-        
-        foldersListDiv.addEventListener('click', (e) => {
-            const toggle = e.target.closest('.toggle-btn');
-            const itemEl = e.target.closest('[data-id]');
-            if (!itemEl) return;
 
-            if (toggle) {
-                const itemId = itemEl.dataset.id;
-                const itemType = itemEl.dataset.type;
-                const itemPath = findItemPath(itemId, itemType);
-                const item = itemPath[itemType];
-                if(item) {
-                    item.isCollapsed = !item.isCollapsed;
-                    saveData();
-                    renderFolders();
-                    initSortable();
-                }
+        setCard.appendChild(setContent);
+        containerDiv.appendChild(setCard);
+    });
+    
+    // CORREÇÃO: ADICIONANDO DE VOLTA A LÓGICA DE CLIQUE
+    containerDiv.querySelectorAll('.set-item-card h3').forEach(header => {
+        header.addEventListener('click', () => {
+            const content = header.nextElementSibling;
+            // Alterna a visibilidade do conteúdo do conjunto
+            if (content.style.display === 'block') {
+                content.style.display = 'none';
+            } else {
+                content.style.display = 'block';
             }
         });
+    });
+}
+
+        function createItemElement(type, item) {
+    const el = document.createElement('div');
+    el.dataset.id = item.id;
+    el.dataset.type = type;
+
+    // Lógica para Flashcard (é mais simples)
+    if (type === 'flashcard_area') {
+        el.className = 'flashcard-area-card';
+        el.style.borderTop = `5px solid ${item.color}`;
+        el.innerHTML = `
+            <div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">
+                <span class="drag-handle">${dragHandleIconSVG}</span>
+                <div>
+                    <h3>${item.name}</h3>
+                    <p>${item.cards.length} cartão(s)</p>
+                </div>
+            </div>`;
+        return el;
+    }
+
+    // Lógica para Pastas, Matérias e Assuntos
+    el.className = `${type}-item`;
+    el.style.borderLeftColor = item.color;
+
+    let toggleBtn = '';
+    // Adiciona o botão de expandir apenas para Pastas e Matérias
+    if (type === 'folder' || type === 'subject') {
+        const isCollapsed = item.isCollapsed ? 'collapsed' : '';
+        toggleBtn = `<span class="toggle-btn ${isCollapsed}" style="font-size: 1.2em; user-select: none; transition: transform 0.2s; cursor:pointer;">▾</span>`;
+    }
+
+    const dragHandle = `<span class="drag-handle">${dragHandleIconSVG}</span>`;
+    const colorPreview = `<div style="width: 18px; height: 18px; border-radius: 4px; margin: 0 12px; border: 1px solid #ccc; flex-shrink: 0; background-color:${item.color};"></div>`;
+    const description = item.description ? `<p style="font-size: 0.9em; color: #718096; margin-top: 5px; white-space: pre-wrap; word-break: break-word;">${item.description}</p>` : '';
+
+    const headerHTML = `
+        <div class="item-header">
+            <div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">
+                ${toggleBtn}
+                ${dragHandle}
+                ${colorPreview}
+                <div style="min-width:0;">
+                    <strong>${item.name}</strong>
+                    ${description}
+                </div>
+            </div>
+        </div>`;
+    el.innerHTML = headerHTML;
+
+    // Lógica recursiva para construir os filhos
+    if (type === 'folder' || type === 'subject') {
+        const contentContainer = document.createElement('div');
+        contentContainer.className = 'content-container';
+        contentContainer.dataset.parentId = item.id;
+        contentContainer.dataset.type = type;
+        if (item.isCollapsed) {
+            contentContainer.classList.add('collapsed');
+        }
+
+        if (type === 'folder' && item.subjects) {
+            item.subjects.forEach(subject => {
+                contentContainer.appendChild(createItemElement('subject', subject)); // Chama a si mesma para construir a matéria
+            });
+        } else if (type === 'subject' && item.topics) {
+            item.topics.forEach(topic => {
+                contentContainer.appendChild(createItemElement('topic', topic)); // Chama a si mesma para construir o assunto
+            });
+        }
+        el.appendChild(contentContainer);
+    }
+    
+    return el;
+}
+       foldersListDiv.addEventListener('click', (e) => {
+    const toggle = e.target.closest('.toggle-btn');
+    if (!toggle) return; // Se não foi um clique na setinha, não faz nada
+
+    // Encontra o container de conteúdo (.content-container) que é irmão do header onde a setinha está
+    const content = toggle.closest('.item-header').nextElementSibling;
+    if (!content || !content.classList.contains('content-container')) return;
+
+    // Encontra o elemento principal (folder-item ou subject-item) e seus dados
+    const itemEl = toggle.closest('[data-id]');
+    if (!itemEl) return;
+    
+    const itemId = itemEl.dataset.id;
+    const itemType = itemEl.dataset.type;
+    const itemPath = findItemPath(itemId, itemType);
+    const item = itemPath[itemType];
+
+    if (item) {
+        // 1. Atualiza o estado nos dados
+        item.isCollapsed = !item.isCollapsed;
+        saveData();
+
+        // 2. Atualiza a aparência diretamente na tela (DOM)
+        toggle.classList.toggle('collapsed', item.isCollapsed);
+        content.classList.toggle('collapsed', item.isCollapsed);
+    }});
 
         // --- LÓGICA DE ANEXOS ---
         const directoryStatusDiv = document.getElementById('directory-status');
@@ -1781,24 +2474,47 @@
         const workspace = document.getElementById('flashcard-workspace');
         const workspaceCanvas = document.getElementById('workspace-canvas');
         function renderFlashcardAreas() {
-            flashcardAreasContainer.innerHTML = '';
-            data.flashcardAreas.forEach(area => {
-                const areaEl = document.createElement('div');
-                areaEl.className = 'flashcard-area-card'; 
-                areaEl.dataset.id = area.id; 
-                areaEl.dataset.type = 'flashcard_area';
-                areaEl.style.borderTop = `5px solid ${area.color}`;
-                areaEl.innerHTML = `
-                    <div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">
-                        <span class="drag-handle">${dragHandleIconSVG}</span>
-                        <div>
-                            <h3>${area.name}</h3>
-                            <p>${area.cards.length} cartão(s)</p>
-                        </div>
-                    </div>`;
-                areaEl.addEventListener('click', (e) => { if (!e.target.closest('.drag-handle')) openWorkspace(area.id); });
-                flashcardAreasContainer.appendChild(areaEl);
-            });
+         const viewMode = currentFlashcardView;
+    const searchQuery = document.getElementById('flashcard-search-input').value.toLowerCase();
+
+    flashcardAreasContainer.innerHTML = '';
+    flashcardAreasContainer.className = viewMode === 'grid' ? 'mt-4 grid-view' : 'mt-4';
+
+    if (viewMode === 'set') {
+        renderSetList('flashcards', flashcardAreasContainer);
+        // O SortableJS para conjuntos pode ser mais complexo, por agora focamos na renderização.
+        return; // A renderização de conjuntos é diferente e termina aqui.
+    }
+
+    let filteredAreas = data.flashcardAreas;
+    if (searchQuery) {
+        filteredAreas = data.flashcardAreas.filter(area => area.name.toLowerCase().includes(searchQuery));
+    }
+
+    if (filteredAreas.length === 0) {
+        flashcardAreasContainer.innerHTML = '<p style="text-align:center;">Nenhuma área de flashcards encontrada.</p>';
+        return;
+    }
+
+    filteredAreas.forEach(area => {
+        const areaEl = document.createElement('div');
+        areaEl.className = 'flashcard-area-card';  
+        areaEl.dataset.id = area.id;  
+        areaEl.dataset.type = 'flashcard_area';
+        areaEl.style.borderTop = `5px solid ${area.color}`;
+        areaEl.innerHTML = `
+            <div style="display: flex; align-items: center; min-width: 0; flex-grow: 1;">
+                <span class="drag-handle">${dragHandleIconSVG}</span>
+                <div>
+                    <h3>${area.name}</h3>
+                    <p>${area.cards.length} cartão(s)</p>
+                </div>
+            </div>`;
+        areaEl.addEventListener('click', (e) => { if (!e.target.closest('.drag-handle')) openWorkspace(area.id); });
+        flashcardAreasContainer.appendChild(areaEl);
+    });
+
+    initSortable(); // Re-inicializa o sortable   
         }
         document.getElementById('add-flashcard-area-btn').addEventListener('click', () => { areaForm.reset(); document.getElementById('flashcard-area-modal-title').innerText = 'Nova Área'; document.getElementById('flashcard-area-edit-id').value = ''; openModal('flashcard-area-modal'); });
         areaForm.addEventListener('submit', (e) => {
@@ -2743,116 +3459,141 @@
         }
         
         // --- LÓGICA DA LIXEIRA ---
-        function moveToTrash(item, type, parentIds = {}) {
-            if (!data.trash) data.trash = [];
-            data.trash.push({
-                item: JSON.parse(JSON.stringify(item)),
-                type: type,
-                deletedAt: new Date().toISOString(),
-                parentIds: parentIds
-            });
-            saveData();
+            function moveToTrash(item, type, parentIds = {}) {
+    if (!data.trash) data.trash = [];
+    data.trash.push({
+        item: JSON.parse(JSON.stringify(item)),
+        type: type,
+        deletedAt: new Date().toISOString(),
+        parentIds: parentIds
+    });
+    saveData();
+}
+
+function renderTrash() {
+    const trashListDiv = document.getElementById('trash-list');
+    trashListDiv.innerHTML = '';
+    if (!data.trash || data.trash.length === 0) {
+        trashListDiv.innerHTML = '<p style="text-align:center; padding: 20px; color: #718096;">A lixeira está vazia.</p>';
+        return;
+    }
+
+    data.trash.sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt)).forEach((trashedItem, index) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'trash-item';
+        
+        let itemName = trashedItem.item.name || `Item Desconhecido`;
+
+        // Lógica de exibição segura, com checagens para evitar erros
+        try {
+            if (trashedItem.type === 'activity' || trashedItem.type === 'review') {
+                const path = findItemPath(trashedItem.item.topicId, 'topic');
+                // Usando "Optional Chaining" (?.) para evitar erros se o caminho não existir
+                itemName = path?.topic ? `${path.subject.name} > ${path.topic.name}` : `Agendamento de item excluído`;
+            } else if (trashedItem.type === 'study_history') {
+                const log = trashedItem.item;
+                const path = log.topicId ? findItemPath(log.topicId, 'topic') : findItemPath(log.subjectId, 'subject');
+                const name = path?.topic ? `${path.subject.name} > ${path.topic.name}` : (path?.subject ? path.subject.name : 'Matéria/Assunto Excluído');
+                const durationMinutes = (log.duration / 60).toFixed(1);
+                itemName = `Registro: ${name} (${durationMinutes} min)`;
+            } else if (trashedItem.type === 'set') {
+                itemName = `Conjunto: ${trashedItem.item.name}`;
+            }
+        } catch (error) {
+            // Se mesmo assim houver um erro, apenas usa o nome padrão para não quebrar a aplicação
+            console.error("Erro ao renderizar item da lixeira:", trashedItem, error);
+            itemName = trashedItem.item.name || `Item com referência quebrada`;
         }
 
-        function renderTrash() {
-            const trashListDiv = document.getElementById('trash-list');
-            trashListDiv.innerHTML = '';
-            if (!data.trash || data.trash.length === 0) {
-                trashListDiv.innerHTML = '<p style="text-align:center; padding: 20px; color: #718096;">A lixeira está vazia.</p>';
-                return;
+        itemEl.innerHTML = `
+            <div class="trash-item-info">
+                <strong>${itemName}</strong>
+                <span class="item-type">${trashedItem.type.replace('_', ' ')} - Excluído em: ${new Date(trashedItem.deletedAt).toLocaleString('pt-BR')}</span>
+            </div>
+            <div class="action-buttons">
+                <button class="restore-btn success" data-index="${index}">Restaurar</button>
+                <button class="perm-delete-btn danger" data-index="${index}">Excluir</button>
+            </div>
+        `;
+        trashListDiv.appendChild(itemEl);
+    });
+}
+
+
+    
+document.getElementById('open-trash-btn').addEventListener('click', () => {
+    renderTrash();
+    openModal('trash-modal');
+});
+
+document.getElementById('trash-list').addEventListener('click', (e) => {
+    const button = e.target.closest('button');
+    if (!button) return;
+
+    const index = parseInt(button.dataset.index, 10);
+    const trashedItem = data.trash[index];
+
+    if (button.classList.contains('restore-btn')) {
+        if (trashedItem.type === 'folder') {
+            data.folders.push(trashedItem.item);
+        } else if (trashedItem.type === 'subject') {
+            const parentFolder = data.folders.find(f => f.id == trashedItem.parentIds.folderId);
+            if (parentFolder) {
+                parentFolder.subjects.push(trashedItem.item);
+            } else {
+                alert("A pasta original não foi encontrada. O item será restaurado em uma nova pasta.");
+                data.folders.push({id: getNextId('folder'), name: "Pasta Restaurada", color: "#cccccc", subjects: [trashedItem.item]});
             }
-
-            data.trash.sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt)).forEach((trashedItem, index) => {
-                const itemEl = document.createElement('div');
-                itemEl.className = 'trash-item';
-                
-                let itemName = trashedItem.item.name || `Item Desconhecido`;
-
-                if (trashedItem.type === 'activity' || trashedItem.type === 'review') {
-                    const path = findItemPath(trashedItem.item.topicId, 'topic');
-                    itemName = path.topic ? `${path.subject.name} > ${path.topic.name}` : `Agendamento de item excluído`;
-                } else if (trashedItem.type === 'study_history') {
-                    const log = trashedItem.item;
-                    const path = log.topicId ? findItemPath(log.topicId, 'topic') : findItemPath(log.subjectId, 'subject');
-                    const name = path.topic ? `${path.subject.name} > ${path.topic.name}` : (path.subject ? path.subject.name : 'Matéria/Assunto Excluído');
-                    const durationMinutes = (log.duration / 60).toFixed(1);
-                    itemName = `Registro: ${name} (${durationMinutes} min)`;
-                }
-
-                itemEl.innerHTML = `
-                    <div class="trash-item-info">
-                        <strong>${itemName}</strong>
-                        <span class="item-type">${trashedItem.type.replace('_', ' ')} - Excluído em: ${new Date(trashedItem.deletedAt).toLocaleString('pt-BR')}</span>
-                    </div>
-                    <div class="action-buttons">
-                        <button class="restore-btn success" data-index="${index}">Restaurar</button>
-                        <button class="perm-delete-btn danger" data-index="${index}">Excluir</button>
-                    </div>
-                `;
-                trashListDiv.appendChild(itemEl);
-            });
+        } else if (trashedItem.type === 'topic') {
+            const parentSubject = data.folders.flatMap(f => f.subjects).find(s => s.id == trashedItem.parentIds.subjectId);
+            if(parentSubject) {
+                parentSubject.topics.push(trashedItem.item);
+            } else {
+                alert("A matéria original não foi encontrada. O item será restaurado em uma nova estrutura.");
+                data.folders.push({id: getNextId('folder'), name: "Pasta Restaurada", color: "#cccccc", subjects: [{id: getNextId('subject'), name: "Matéria Restaurada", color:"#cccccc", topics: [trashedItem.item]}]});
+            }
+        // ADICIONAMOS A LÓGICA PARA OS ITENS QUE FALTAVAM ABAIXO
+        } else if (trashedItem.type === 'flashcard_area') {
+            data.flashcardAreas.push(trashedItem.item);
+        } else if (trashedItem.type === 'cycle') {
+            data.cycles.push(trashedItem.item);
+        } else if (trashedItem.type === 'set') {
+            const setType = trashedItem.parentIds.setType; // Ex: 'folders' ou 'flashcards'
+            if (setType && data.sets[setType]) {
+                data.sets[setType].push(trashedItem.item);
+            } else {
+                 alert("Não foi possível determinar o tipo do conjunto. Restaurando em 'Conjuntos de Pastas'.");
+                 data.sets.folders.push(trashedItem.item);
+            }
+        } else if (trashedItem.type === 'activity') {
+            data.schedules.activities.push(trashedItem.item);
+        } else if (trashedItem.type === 'review') {
+            data.schedules.reviews.push(trashedItem.item);
+        } else if (trashedItem.type === 'study_history') {
+            data.studyHistory.push(trashedItem.item);
         }
         
-        document.getElementById('open-trash-btn').addEventListener('click', () => {
+        data.trash.splice(index, 1);
+        renderAll();
+        initSortable();
+        renderTrash();
+        saveData();
+    } else if (button.classList.contains('perm-delete-btn')) {
+        if (confirm('Excluir permanentemente? Esta ação não pode ser desfeita.')) {
+            data.trash.splice(index, 1);
             renderTrash();
-            openModal('trash-modal');
-        });
+            saveData();
+        }
+    }
+});
 
-        document.getElementById('trash-list').addEventListener('click', (e) => {
-            const button = e.target.closest('button');
-            if (!button) return;
-
-            const index = parseInt(button.dataset.index, 10);
-            const trashedItem = data.trash[index];
-
-            if (button.classList.contains('restore-btn')) {
-                if (trashedItem.type === 'folder') {
-                    data.folders.push(trashedItem.item);
-                } else if (trashedItem.type === 'subject') {
-                    const parentFolder = data.folders.find(f => f.id == trashedItem.parentIds.folderId);
-                    if (parentFolder) {
-                        parentFolder.subjects.push(trashedItem.item);
-                    } else {
-                        alert("A pasta original não foi encontrada. O item será restaurado em uma nova pasta.");
-                        data.folders.push({id: getNextId('folder'), name: "Pasta Restaurada", color: "#cccccc", subjects: [trashedItem.item]});
-                    }
-                } else if (trashedItem.type === 'topic') {
-                    const parentSubject = data.folders.flatMap(f => f.subjects).find(s => s.id == trashedItem.parentIds.subjectId);
-                    if(parentSubject) {
-                        parentSubject.topics.push(trashedItem.item);
-                    } else {
-                        alert("A matéria original não foi encontrada. O item será restaurado em uma nova estrutura.");
-                        data.folders.push({id: getNextId('folder'), name: "Pasta Restaurada", color: "#cccccc", subjects: [{id: getNextId('subject'), name: "Matéria Restaurada", color:"#cccccc", topics: [trashedItem.item]}]});
-                    }
-                } else if (trashedItem.type === 'activity') {
-                    data.schedules.activities.push(trashedItem.item);
-                } else if (trashedItem.type === 'review') {
-                    data.schedules.reviews.push(trashedItem.item);
-                } else if (trashedItem.type === 'study_history') {
-                    data.studyHistory.push(trashedItem.item);
-                }
-                
-                data.trash.splice(index, 1);
-                renderAll();
-                initSortable();
-                renderTrash();
-                saveData();
-            } else if (button.classList.contains('perm-delete-btn')) {
-                if (confirm('Excluir permanentemente? Esta ação não pode ser desfeita.')) {
-                    data.trash.splice(index, 1);
-                    renderTrash();
-                    saveData();
-                }
-            }
-        });
-
-        document.getElementById('empty-trash-btn').addEventListener('click', () => {
-            if (data.trash.length > 0 && confirm('Esvaziar toda a lixeira? Esta ação não pode ser desfeita.')) {
-                data.trash = [];
-                renderTrash();
-                saveData();
-            }
-        });
+document.getElementById('empty-trash-btn').addEventListener('click', () => {
+    if (data.trash.length > 0 && confirm('Esvaziar toda a lixeira? Esta ação não pode ser desfeita.')) {
+        data.trash = [];
+        renderTrash();
+        saveData();
+    }
+});
 
         // --- CONFIGURAÇÕES ---
         document.getElementById('settings-button').addEventListener('click', () => openModal('settings-modal'));
@@ -2902,212 +3643,238 @@
             }
         });
 
-        // --- LÓGICA DE AÇÕES DO MENU DE CONTEXTO ---
-        function handleContextMenuAction(action, dataset) {
-            const { type, id, folderId, subjectId, scheduleType } = dataset;
 
-            // Pastas, Matérias e Assuntos
-            if (['folder', 'subject', 'topic'].includes(type)) {
-                if (action === 'add-subject') {
-                    openItemModal('subject', null, { folderId: id });
-                } else if (action === 'add-topic') {
-                    openItemModal('topic', null, { folderId, subjectId: id });
-                } else if (action === 'edit') {
-                    openItemModal(type, id, { folderId, subjectId });
-                } else if (action === 'delete') {
-                    if (!confirm('Mover este item e todo o seu conteúdo para a lixeira?')) return;
-                    if (type === 'folder') {
-                        const folderIndex = data.folders.findIndex(f => f.id == id);
-                        if (folderIndex > -1) {
-                            const [itemToTrash] = data.folders.splice(folderIndex, 1);
-                            moveToTrash(itemToTrash, type);
-                        }
-                    } else if (type === 'subject') {
-                        const { folder } = findItemPath(id, type);
-                        const subjectIndex = folder.subjects.findIndex(s => s.id == id);
-                        if (subjectIndex > -1) {
-                            const [itemToTrash] = folder.subjects.splice(subjectIndex, 1);
-                            moveToTrash(itemToTrash, type, { folderId: folder.id });
-                        }
-                    } else if (type === 'topic') {
-                        const { subject } = findItemPath(id, type);
-                        const topicIndex = subject.topics.findIndex(t => t.id == id);
-                        if(topicIndex > -1) {
-                            const [itemToTrash] = subject.topics.splice(topicIndex, 1);
-                            moveToTrash(itemToTrash, type, { subjectId: subject.id });
-                        }
-                    }
-                    renderAll(); initSortable(); saveData();
-                } else if (action === 'duplicate') {
-                    function deepCloneWithNewIds(item, cloneType) {
-                        const newItem = JSON.parse(JSON.stringify(item));
-                        newItem.id = getNextId(cloneType);
-                        newItem.name += ' (Cópia)';
-                        if (newItem.subjects) newItem.subjects = newItem.subjects.map(s => deepCloneWithNewIds(s, 'subject'));
-                        if (newItem.topics) newItem.topics = newItem.topics.map(t => deepCloneWithNewIds(t, 'topic'));
-                        if (newItem.attachments) newItem.attachments.forEach(a => a.id = getNextId('attachment'));
-                        return newItem;
-                    }
-                    if (type === 'folder') {
-                        const newFolder = deepCloneWithNewIds(findItemPath(id, 'folder').folder, 'folder');
-                        data.folders.push(newFolder);
-                    } else if (type === 'subject') {
-                        const { folder, subject } = findItemPath(id, 'subject');
-                        const newSubject = deepCloneWithNewIds(subject, 'subject');
-                        folder.subjects.push(newSubject);
-                    } else if (type === 'topic') {
-                        const { subject, topic } = findItemPath(id, 'topic');
-                        const newTopic = deepCloneWithNewIds(topic, 'topic');
-                        subject.topics.push(newTopic);
-                    }
-                    renderAll(); initSortable(); saveData();
+
+        // --- LÓGICA DE AÇÕES DO MENU DE CONTEXTO ---
+
+function handleContextMenuAction(action, dataset) {
+    const { type, id, folderId, subjectId, scheduleType } = dataset;
+
+    if (['folder', 'subject', 'topic'].includes(type)) {
+        // ... (toda a lógica para pastas, matérias e assuntos que já está funcionando)
+        if (action === 'add-subject') {
+            openItemModal('subject', null, { folderId: id });
+        } else if (action === 'add-topic') {
+            openItemModal('topic', null, { folderId, subjectId: id });
+        } else if (action === 'edit') {
+            openItemModal(type, id, { folderId, subjectId });
+        } else if (action === 'delete') {
+            if (!confirm('Mover este item e todo o seu conteúdo para a lixeira?')) return;
+            if (type === 'folder') {
+                const folderIndex = data.folders.findIndex(f => f.id == id);
+                if (folderIndex > -1) {
+                    const [itemToTrash] = data.folders.splice(folderIndex, 1);
+                    moveToTrash(itemToTrash, type);
+                }
+            } else if (type === 'subject') {
+                const { folder } = findItemPath(id, type);
+                const subjectIndex = folder.subjects.findIndex(s => s.id == id);
+                if (subjectIndex > -1) {
+                    const [itemToTrash] = folder.subjects.splice(subjectIndex, 1);
+                    moveToTrash(itemToTrash, type, { folderId: folder.id });
+                }
+            } else if (type === 'topic') {
+                const { subject } = findItemPath(id, type);
+                const topicIndex = subject.topics.findIndex(t => t.id == id);
+                if(topicIndex > -1) {
+                    const [itemToTrash] = subject.topics.splice(topicIndex, 1);
+                    moveToTrash(itemToTrash, type, { subjectId: subject.id });
                 }
             }
-            // Áreas de Flashcard
-            else if (type === 'flashcard_area') {
-                const area = data.flashcardAreas.find(a => a.id == id);
-                if (!area) return;
-
-                if (action === 'edit') {
-                    document.getElementById('flashcard-area-modal-title').innerText = 'Editar Área';
-                    document.getElementById('flashcard-area-edit-id').value = id;
-                    document.getElementById('flashcard-area-name').value = area.name;
-                    document.getElementById('flashcard-area-color').value = area.color;
-                    openModal('flashcard-area-modal');
-                } else if (action === 'delete') {
-                    if (confirm('Mover esta área de flashcards para a lixeira?')) {
-                        const areaIndex = data.flashcardAreas.findIndex(a => a.id == id);
-                         if (areaIndex > -1) {
-                            const [itemToTrash] = data.flashcardAreas.splice(areaIndex, 1);
-                            moveToTrash(itemToTrash, type);
-                            renderFlashcardAreas();
-                            saveData();
-                         }
-                    }
-                } else if (action === 'duplicate') {
-                    const newArea = JSON.parse(JSON.stringify(area));
-                    newArea.id = getNextId('flashcardArea');
-                    newArea.name += ' (Cópia)';
-                    newArea.cards.forEach(c => c.id = getNextId('flashcard'));
-                    data.flashcardAreas.push(newArea);
+            renderAll(); initSortable(); saveData();
+        } else if (action === 'duplicate') {
+            function deepCloneWithNewIds(item, cloneType) {
+                const newItem = JSON.parse(JSON.stringify(item));
+                newItem.id = getNextId(cloneType);
+                newItem.name += ' (Cópia)';
+                if (newItem.subjects) newItem.subjects = newItem.subjects.map(s => deepCloneWithNewIds(s, 'subject'));
+                if (newItem.topics) newItem.topics = newItem.topics.map(t => deepCloneWithNewIds(t, 'topic'));
+                if (newItem.attachments) newItem.attachments.forEach(a => a.id = getNextId('attachment'));
+                return newItem;
+            }
+            if (type === 'folder') {
+                const newFolder = deepCloneWithNewIds(findItemPath(id, 'folder').folder, 'folder');
+                data.folders.push(newFolder);
+            } else if (type === 'subject') {
+                const { folder, subject } = findItemPath(id, 'subject');
+                const newSubject = deepCloneWithNewIds(subject, 'subject');
+                folder.subjects.push(newSubject);
+            } else if (type === 'topic') {
+                const { subject, topic } = findItemPath(id, 'topic');
+                const newTopic = deepCloneWithNewIds(topic, 'topic');
+                subject.topics.push(newTopic);
+            }
+            renderAll(); initSortable(); saveData();
+        }
+    }
+    else if (type === 'flashcard_area') {
+        const area = data.flashcardAreas.find(a => a.id == id);
+        if (!area) return;
+        if (action === 'edit') {
+            document.getElementById('flashcard-area-modal-title').innerText = 'Editar Área';
+            document.getElementById('flashcard-area-edit-id').value = id;
+            document.getElementById('flashcard-area-name').value = area.name;
+            document.getElementById('flashcard-area-color').value = area.color;
+            openModal('flashcard-area-modal');
+        } else if (action === 'delete') {
+            if (confirm('Mover esta área de flashcards para a lixeira?')) {
+                const areaIndex = data.flashcardAreas.findIndex(a => a.id == id);
+                  if (areaIndex > -1) {
+                    const [itemToTrash] = data.flashcardAreas.splice(areaIndex, 1);
+                    moveToTrash(itemToTrash, type);
                     renderFlashcardAreas();
                     saveData();
-                }
+                  }
             }
-            // Agendamentos
-            else if (type === 'schedule') {
-                if (action === 'edit') {
-                    openScheduleModal(scheduleType, id);
-                } else if (action === 'duplicate') {
-                    openScheduleModal(scheduleType, id, true); 
-                } else if (action === 'delete') {
-                    if (confirm('Mover agendamento para a lixeira? Se for um evento que se repete, todas as futuras repetições também serão removidas.')) { 
-                        const listKey = scheduleType === 'activity' ? 'activities' : 'reviews';
-                        const idToDelete = parseInt(id, 10);
-                        
-                        // Remove instâncias futuras
-                        data.schedules[listKey] = data.schedules[listKey].filter(evt => evt.masterId !== idToDelete);
-
-                        // Remove o item mestre
-                        const itemIndex = data.schedules[listKey].findIndex(i => i.id === idToDelete);
-                        if (itemIndex > -1) {
-                            const [itemToTrash] = data.schedules[listKey].splice(itemIndex, 1);
-                            moveToTrash(itemToTrash, scheduleType);
-                            renderSchedules(); 
-                            saveData();
-                            if(calendar) calendar.refetchEvents();
-                        }
-                    }
-                }
-            }
-            // Ciclos
-            else if (type === 'cycle') {
-                const cycle = data.cycles.find(c => c.id == id);
-                if (!cycle) return;
-
-                if (action === 'edit') {
-                    openCycleModal(id);
-                } else if (action === 'delete') {
-                       if (confirm("Mover este ciclo para a lixeira?")) {
-                           const cycleIndex = data.cycles.findIndex(c => c.id == id);
-                           if (cycleIndex > -1) {
-                               const [itemToTrash] = data.cycles.splice(cycleIndex, 1);
-                               moveToTrash(itemToTrash, type);
-                               renderCycles();
-                               saveData();
-                           }
-                       }
-                } else if (action === 'duplicate') {
-                    const newCycle = JSON.parse(JSON.stringify(cycle));
-                    newCycle.id = getNextId('cycle');
-                    newCycle.name += " (Cópia)";
-                    data.cycles.push(newCycle);
-                    renderCycles();
+        } else if (action === 'duplicate') {
+            const newArea = JSON.parse(JSON.stringify(area));
+            newArea.id = getNextId('flashcardArea');
+            newArea.name += ' (Cópia)';
+            newArea.cards.forEach(c => c.id = getNextId('flashcard'));
+            data.flashcardAreas.push(newArea);
+            renderFlashcardAreas();
+            saveData();
+        }
+    }
+    else if (type === 'schedule') {
+        // ... (lógica de agendamentos)
+        if (action === 'edit') {
+            openScheduleModal(scheduleType, id);
+        } else if (action === 'duplicate') {
+            openScheduleModal(scheduleType, id, true); 
+        } else if (action === 'delete') {
+            if (confirm('Mover agendamento para a lixeira? Se for um evento que se repete, todas as futuras repetições também serão removidas.')) { 
+                const listKey = scheduleType === 'activity' ? 'activities' : 'reviews';
+                const idToDelete = parseInt(id, 10);
+                data.schedules[listKey] = data.schedules[listKey].filter(evt => evt.masterId !== idToDelete);
+                const itemIndex = data.schedules[listKey].findIndex(i => i.id === idToDelete);
+                if (itemIndex > -1) {
+                    const [itemToTrash] = data.schedules[listKey].splice(itemIndex, 1);
+                    moveToTrash(itemToTrash, scheduleType);
+                    renderSchedules(); 
                     saveData();
+                    if(calendar) calendar.refetchEvents();
                 }
             }
         }
+    }
+    else if (type === 'cycle') {
+        // ... (lógica de ciclos)
+        const cycle = data.cycles.find(c => c.id == id);
+        if (!cycle) return;
+        if (action === 'edit') {
+            openCycleModal(id);
+        } else if (action === 'delete') {
+                if (confirm("Mover este ciclo para a lixeira?")) {
+                    const cycleIndex = data.cycles.findIndex(c => c.id == id);
+                    if (cycleIndex > -1) {
+                        const [itemToTrash] = data.cycles.splice(cycleIndex, 1);
+                        moveToTrash(itemToTrash, type);
+                        renderCycles();
+                        saveData();
+                    }
+                }
+        } else if (action === 'duplicate') {
+            const newCycle = JSON.parse(JSON.stringify(cycle));
+            newCycle.id = getNextId('cycle');
+            newCycle.name += " (Cópia)";
+            data.cycles.push(newCycle);
+            renderCycles();
+            saveData();
+        }
+    }
+    else if (type === 'set') {
+        const setType = data.sets.folders.some(s => s.id == id) ? 'folders' : 'flashcards';
+        const set = data.sets[setType].find(s => s.id == id);
+        if (!set) return;
 
-        // --- LÓGICA DE ARRASTAR E SOLTAR ---
+        if (action === 'edit') {
+            openSetModal(setType, id);
+        } else if (action === 'delete') {
+            if (confirm("Mover este conjunto para a lixeira?")) {
+                const setIndex = data.sets[setType].findIndex(s => s.id == id);
+                if (setIndex > -1) {
+                    const [itemToTrash] = data.sets[setType].splice(setIndex, 1);
+                    // A MUDANÇA ESTÁ AQUI: passamos a informação extra 'setType'
+                    moveToTrash(itemToTrash, 'set', { setType: setType }); 
+                    saveData();
+                    if (setType === 'folders') renderFolders();
+                    else renderFlashcardAreas();
+                }
+            }
+        } else if (action === 'duplicate') {
+            const newSet = JSON.parse(JSON.stringify(set));
+            newSet.id = getNextId('set');
+            newSet.name += " (Cópia)";
+            data.sets[setType].push(newSet);
+            saveData();
+            if (setType === 'folders') renderFolders();
+            else renderFlashcardAreas();
+        }
+    }
+}
+
+
+              // --- LÓGICA DE ARRASTAR E SOLTAR ---
         function initSortable() {
-            // Arrastar Áreas de Flashcard
-            new Sortable(document.getElementById('flashcard-areas-container'), {
-                animation: 150,
-                handle: '.drag-handle',
-                onEnd: (evt) => {
-                    const item = data.flashcardAreas.splice(evt.oldIndex, 1)[0];
-                    data.flashcardAreas.splice(evt.newIndex, 0, item);
-                    saveData();
-                }
-            });
-
-            // Arrastar Pastas
-            new Sortable(document.getElementById('folders-list'), {
-                animation: 150,
-                handle: '.drag-handle',
-                onEnd: (evt) => {
-                    const item = data.folders.splice(evt.oldIndex, 1)[0];
-                    data.folders.splice(evt.newIndex, 0, item);
-                    saveData();
-                }
-            });
-
-            // Arrastar Matérias
-            document.querySelectorAll('.content-container[data-type="folder"]').forEach(container => {
-                const folderId = parseInt(container.dataset.parentId, 10);
-                new Sortable(container, {
-                    group: 'subjects',
-                    animation: 150,
-                    handle: '.drag-handle',
-                    onEnd: (evt) => {
-                        const folder = data.folders.find(f => f.id === folderId);
-                        if (folder) {
-                            const item = folder.subjects.splice(evt.oldIndex, 1)[0];
-                            folder.subjects.splice(evt.newIndex, 0, item);
-                            saveData();
-                        }
-                    }
-                });
-            });
-
-            // Arrastar Assuntos
-            document.querySelectorAll('.content-container[data-type="subject"]').forEach(container => {
-                const subjectId = parseInt(container.dataset.parentId, 10);
-                new Sortable(container, {
-                    group: 'topics',
-                    animation: 150,
-                    handle: '.drag-handle',
-                    onEnd: (evt) => {
-                        const parentSubject = data.folders.flatMap(f => f.subjects).find(s => s.id === subjectId);
-                        if (parentSubject) {
-                            const item = parentSubject.topics.splice(evt.oldIndex, 1)[0];
-                            parentSubject.topics.splice(evt.newIndex, 0, item);
-                            saveData();
-                        }
-                    }
-                });
-            });
+               // 1. Arrastar Pastas (no nível principal) e Áreas de Flashcard
+    new Sortable(document.getElementById('folders-list'), {
+        animation: 150, handle: '.drag-handle', onEnd: (evt) => {
+            const item = data.folders.splice(evt.oldIndex, 1)[0];
+            data.folders.splice(evt.newIndex, 0, item);
+            saveData();
         }
+    });
+    new Sortable(document.getElementById('flashcard-areas-container'), {
+        animation: 150, handle: '.drag-handle', onEnd: (evt) => {
+            const item = data.flashcardAreas.splice(evt.oldIndex, 1)[0];
+            data.flashcardAreas.splice(evt.newIndex, 0, item);
+            saveData();
+        }
+    });
+
+    // 2. Arrastar Matérias dentro de Pastas (funciona em todas as visualizações)
+    document.querySelectorAll('.content-container[data-type="folder"]').forEach(container => {
+        const folderId = parseInt(container.dataset.parentId, 10);
+        new Sortable(container, {
+            group: 'subjects', animation: 150, handle: '.drag-handle',
+            onEnd: (evt) => {
+                const folder = data.folders.find(f => f.id === folderId);
+                if (folder) {
+                    const item = folder.subjects.splice(evt.oldIndex, 1)[0];
+                    folder.subjects.splice(evt.newIndex, 0, item);
+                    saveData();
+                }
+            }
+        });
+    });
+
+    // 3. Arrastar Assuntos dentro de Matérias (funciona em todas as visualizações)
+    document.querySelectorAll('.content-container[data-type="subject"]').forEach(container => {
+        const subjectId = parseInt(container.dataset.parentId, 10);
+        new Sortable(container, {
+            group: 'topics', animation: 150, handle: '.drag-handle',
+            onEnd: (evt) => {
+                const parentSubject = data.folders.flatMap(f => f.subjects).find(s => s.id === subjectId);
+                if (parentSubject) {
+                    const item = parentSubject.topics.splice(evt.oldIndex, 1)[0];
+                    parentSubject.topics.splice(evt.newIndex, 0, item);
+                    saveData();
+                }
+            }
+        });
+    });
+
+    // 4. Arrastar itens DENTRO de um conjunto (apenas reordenação visual, não salva)
+    document.querySelectorAll('.set-content').forEach(container => {
+        new Sortable(container, {
+            animation: 150,
+            handle: '.drag-handle'
+            // Não adicionamos 'onEnd' aqui porque a ordem dos itens em um conjunto é definida na edição do conjunto.
+            // Arrastar aqui serve apenas para reorganização visual temporária.
+        });
+    });
+         }
         
         // --- LÓGICA DE GERAR RELATÓRIO ---
         document.getElementById('generate-report-btn').addEventListener('click', generateReport);
