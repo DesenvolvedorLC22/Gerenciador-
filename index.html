@@ -863,6 +863,7 @@
         <div>
             <div id="theme-toggle" class="sidebar-bottom-action">🌙 Alterar Tema</div>
             <div class="settings-icon" id="settings-button">⚙️ Configurações</div>
+            <div id="logout-btn" class="sidebar-bottom-action" style="color: #ffbaba;">🚪 Sair</div>
         </div>
     </aside>
 
@@ -1184,12 +1185,37 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-    
+
+       // --- INÍCIO DO CÓDIGO DE INTEGRAÇÃO ---
+
+    const CURRENT_USER_KEY = 'studyAppCurrentUser';
+    // Coloque aqui o nome exato do seu arquivo de login (Código 1)
+    const LOGIN_PAGE_FILENAME = 'login.html'; 
+
+    const currentUserJSON = localStorage.getItem(CURRENT_USER_KEY);
+
+    // Se não houver um usuário logado no localStorage...
+    if (!currentUserJSON) {
+        alert('Acesso negado. Por favor, faça o login para continuar.');
+        // ...redireciona imediatamente para a página de login.
+        window.location.href = LOGIN_PAGE_FILENAME;
+        return; // Para a execução do resto do script.
+    }
+
+    // Se houver um usuário, guardamos a informação dele em uma constante.
+    const currentUser = JSON.parse(currentUserJSON);
+
+    // --- FIM DO CÓDIGO DE INTEGRAÇÃO ---
+
+    // O resto do seu código começa aqui (if (localStorage.getItem('theme') === 'dark') { ... })
+
         if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-theme');
         }
 
         // --- ESTADO GLOBAL E VARIÁVEIS ---
+
+        const USER_DATA_KEY = `studyOrganizerData_user_${currentUser.id}`;
         let data = {
           folders: [], 
           flashcardAreas: [],
@@ -1330,10 +1356,14 @@ const setViewIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" heigh
         // --- FUNÇÕES DE DADOS E INICIALIZAÇÃO ---
         function getNextId(type) { if (!data.nextIds[type]) data.nextIds[type] = 1; const id = data.nextIds[type]; data.nextIds[type]++; return id; }
         
-        function saveData() { try { localStorage.setItem('studyOrganizerData_v4', JSON.stringify(data)); } catch (e) { console.error("Erro ao salvar dados:", e); } }
+         function saveData() { 
+         try { 
+        localStorage.setItem(USER_DATA_KEY, JSON.stringify(data)); 
+    } catch (e) { console.error("Erro ao salvar dados:", e); } 
+  }
         
         function loadData() {
-    const savedData = localStorage.getItem('studyOrganizerData_v4');
+       const savedData = localStorage.getItem(USER_DATA_KEY);
     if (savedData) {
         const parsedData = JSON.parse(savedData);
         
@@ -1382,10 +1412,25 @@ const setViewIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" heigh
                 startAlarmSystem();
                 setupSidebarToggle();
                 setupThemeToggle();
-                setupTaskbarToggle(); 
+                setupTaskbarToggle();
+                setupLogout();  
             } catch (error) { console.error("Falha na inicialização:", error); alert("Ocorreu um erro. Verifique o console (F12).") }
         }
         
+        // Adicione esta função para o logout
+     function setupLogout() {
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            if (confirm('Tem certeza que deseja sair?')) {
+                // Remove a chave do usuário logado
+                localStorage.removeItem(CURRENT_USER_KEY);
+                // Envia de volta para a página de login
+                window.location.href = LOGIN_PAGE_FILENAME;
+            }
+        });
+       }
+   }
         function renderAll() { 
             renderFolders(); 
             renderFlashcardAreas(); 
