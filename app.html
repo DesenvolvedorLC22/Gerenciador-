@@ -1835,7 +1835,7 @@ document.getElementById('set-form').addEventListener('submit', (e) => {
 });
 
 
-          // SUBSTITUA SUA FUNÇÃO 'renderFolders' INTEIRA PELA VERSÃO CORRIGIDA ABAIXO
+          
 function renderFolders() {
     const viewMode = currentFolderView;
     const searchQuery = document.getElementById('folder-search-input').value.toLowerCase();
@@ -1845,51 +1845,27 @@ function renderFolders() {
 
     if (viewMode === 'set') {
         renderSetList('folders', foldersListDiv);
-        // Não há mais um 'return' aqui, permitindo que o código continue
     } else {
-        let filteredFolders = data.folders.filter(folder => folder.name.toLowerCase().includes(searchQuery));
+        let filteredFolders = data.folders.filter(folder => 
+            folder.name.toLowerCase().includes(searchQuery)
+        );
 
         if (filteredFolders.length === 0) {
             foldersListDiv.innerHTML = '<p style="text-align:center;">Nenhuma pasta encontrada.</p>';
-            return; // Aqui pode retornar, pois não há nada para ordenar
+            return; // Retorna pois não há o que ordenar ou exibir
         }
 
+        // A MÁGICA ESTÁ AQUI:
+        // Iteramos apenas nas pastas e chamamos a função que já constrói tudo.
         filteredFolders.forEach(folder => {
-            const folderEl = createItemElement('folder', folder);
-            
-            const folderContent = document.createElement('div');
-            folderContent.className = 'content-container';
-            folderContent.dataset.parentId = folder.id;
-            folderContent.dataset.type = 'folder';
-            
-            if (folder.isCollapsed) {
-                folderContent.classList.add('collapsed');
-            }
-            
-            folder.subjects.forEach(subject => {
-                const subjectEl = createItemElement('subject', subject, { folderId: folder.id });
-                const subjectContent = document.createElement('div');
-                subjectContent.className = 'content-container';
-                subjectContent.dataset.parentId = subject.id;
-                subjectContent.dataset.type = 'subject';
-                
-                if(subject.isCollapsed) {
-                    subjectContent.classList.add('collapsed');
-                }
-
-                subject.topics.forEach(topic => {
-                    subjectContent.appendChild(createItemElement('topic', topic, { folderId: folder.id, subjectId: subject.id }));
-                });
-                
-                subjectEl.appendChild(subjectContent);
-                folderContent.appendChild(subjectEl);
-            });
-            folderEl.appendChild(folderContent);
-            foldersListDiv.appendChild(folderEl);
+            // A função createItemElement já cuida de criar as matérias e assuntos recursivamente.
+            // Não precisamos fazer isso manualmente aqui.
+            foldersListDiv.appendChild(createItemElement('folder', folder));
         });
     }
 
-    // Esta linha agora será executada em TODOS os modos de visualização
+    // A chamada para initSortable agora acontece depois que a tela está 100% desenhada,
+    // garantindo que o "arrastar e soltar" funcione em todos os modos.
     initSortable();
 }
 
@@ -1951,56 +1927,10 @@ function renderFolders() {
         });
 
 
-         function renderFolders() {
-    const viewMode = currentFolderView;
-    const searchQuery = document.getElementById('folder-search-input').value.toLowerCase();
-    
-    foldersListDiv.innerHTML = '';
-    foldersListDiv.className = viewMode === 'grid' ? 'grid-view' : '';
+        
+//--------------------------------------------------------------------------------------
 
-    if (viewMode === 'set') {
-        renderSetList('folders', foldersListDiv);
-    } else {
-        let filteredFolders = data.folders.filter(folder => folder.name.toLowerCase().includes(searchQuery));
 
-        if (filteredFolders.length === 0) {
-            foldersListDiv.innerHTML = '<p style="text-align:center;">Nenhuma pasta encontrada.</p>';
-            return; // Retorna aqui pois não há nada para ordenar
-        }
-
-        filteredFolders.forEach(folder => {
-            const folderEl = createItemElement('folder', folder);
-            
-            const folderContent = document.createElement('div');
-            folderContent.className = 'content-container';
-            folderContent.dataset.parentId = folder.id;
-            folderContent.dataset.type = 'folder';
-            if (folder.isCollapsed) folderContent.classList.add('collapsed');
-            
-            folder.subjects.forEach(subject => {
-                const subjectEl = createItemElement('subject', subject, { folderId: folder.id });
-                const subjectContent = document.createElement('div');
-                subjectContent.className = 'content-container';
-                subjectContent.dataset.parentId = subject.id;
-                subjectContent.dataset.type = 'subject';
-                if(subject.isCollapsed) subjectContent.classList.add('collapsed');
-
-                subject.topics.forEach(topic => {
-                    subjectContent.appendChild(createItemElement('topic', topic, { folderId: folder.id, subjectId: subject.id }));
-                });
-                
-                subjectEl.appendChild(subjectContent);
-                folderContent.appendChild(subjectEl);
-            });
-            folderEl.appendChild(folderContent);
-            foldersListDiv.appendChild(folderEl);
-        });
-    }
-
-    // A chamada para initSortable agora acontece depois que a tela está 100% desenhada.
-    initSortable();
-}
-   
 
 
  // SUBSTITUA SUA FUNÇÃO 'renderSetList' INTEIRA PELA VERSÃO FINAL ABAIXO:
