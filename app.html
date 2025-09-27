@@ -1903,29 +1903,53 @@ function renderFolders() {
 
         document.getElementById('add-folder-btn').addEventListener('click', () => openItemModal('folder'));
 
-        itemForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const id = document.getElementById('item-id').value;
-            const type = document.getElementById('item-type').value;
-            const parentFolderId = document.getElementById('parent-folder-id').value;
-            const parentSubjectId = document.getElementById('parent-subject-id').value;
-            const itemData = { name: document.getElementById('item-name').value, description: document.getElementById('item-description').value, color: document.getElementById('color-picker-input').value };
+       
+    itemForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = document.getElementById('item-id').value;
+    const type = document.getElementById('item-type').value;
+    const itemData = {
+        name: document.getElementById('item-name').value,
+        description: document.getElementById('item-description').value,
+        color: document.getElementById('color-picker-input').value
+    };
 
-            if (type === 'folder') {
-                if (id) Object.assign(findItemPath(id, 'folder').folder, itemData);
-                else data.folders.push({ id: getNextId('folder'), ...itemData, subjects: [], isCollapsed: false });
-            } else if (type === 'subject') {
-                const folder = findItemPath(parentFolderId, 'folder').folder;
-                if (id) Object.assign(folder.subjects.find(s => s.id == id), itemData);
-                else folder.subjects.push({ id: getNextId('subject'), ...itemData, topics: [], isCollapsed: false });
-            } else if (type === 'topic') {
-                const { subject } = findItemPath(parentSubjectId, 'subject');
-                if (id) Object.assign(subject.topics.find(t => t.id == id), itemData);
-                else subject.topics.push({ id: getNextId('topic'), ...itemData, attachments: [] });
+    if (id) { // Lógica para EDITAR um item existente
+        // Encontra o item diretamente pelo seu ID e tipo, que é mais confiável.
+        const path = findItemPath(id, type);
+        if (path && path[type]) {
+            // Atualiza o item encontrado com os novos dados do formulário.
+            Object.assign(path[type], itemData);
+        } else {
+            console.error("Erro: não foi possível encontrar o item para editar.", { id, type });
+            alert("Ocorreu um erro ao salvar. Não foi possível encontrar o item original.");
+            return; // Interrompe a execução para evitar mais erros.
+        }
+    } else { // Lógica para CRIAR um novo item (permanece a mesma)
+        const parentFolderId = document.getElementById('parent-folder-id').value;
+        const parentSubjectId = document.getElementById('parent-subject-id').value;
+
+        if (type === 'folder') {
+            data.folders.push({ id: getNextId('folder'), ...itemData, subjects: [], isCollapsed: false });
+        } else if (type === 'subject') {
+            const folder = findItemPath(parentFolderId, 'folder').folder;
+            if (folder) {
+                folder.subjects.push({ id: getNextId('subject'), ...itemData, topics: [], isCollapsed: false });
             }
-            renderAll(); initSortable(); saveData(); closeModal();
-        });
+        } else if (type === 'topic') {
+            const { subject } = findItemPath(parentSubjectId, 'subject');
+            if (subject) {
+                subject.topics.push({ id: getNextId('topic'), ...itemData, attachments: [] });
+            }
+        }
+    }
 
+    // Atualiza a tela, salva os dados e fecha o modal.
+    renderAll();
+    initSortable();
+    saveData();
+    closeModal();
+});
 
         
 //--------------------------------------------------------------------------------------
